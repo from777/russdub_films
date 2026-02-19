@@ -15,6 +15,7 @@ PySide6-версия утилиты для пакетной обработки M
    ```powershell
    winget install Python.Python.3.13
    ```
+   Или скачать с https://www.python.org/downloads/ (при установке поставить галочку **"Add Python to PATH"**)
 
 2. Установить зависимости:
    ```
