@@ -33,15 +33,15 @@ PySide6-версия утилиты для пакетной обработки M
    ```
    Программа автоматически ищет `UnRAR.exe` в `C:\Program Files\WinRAR\` и `7z.exe` в `C:\Program Files\7-Zip\`.
 
-3. Убедиться, что `mkvmerge_gui_config.json` лежит в той же папке, что и `mkvmerge_gui_v2.py`.
+3. Убедиться, что `mkvmerge_gui_config.json` лежит в той же папке, что и `mkvmerge_gui_v2.pyw`.
 
 ## Запуск
 
 ```
-python mkvmerge_gui_v2.py
+python mkvmerge_gui_v2.pyw
 ```
 
-Или двойной клик по файлу `mkvmerge_gui_v2.py` (если Python ассоциирован с `.py` файлами).
+Или двойной клик по файлу `mkvmerge_gui_v2.pyw` (если Python ассоциирован с `.py` файлами).
 
 ## Конфигурация
 
