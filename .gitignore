@@ -1,0 +1,27 @@
+# Приватные правила и инструкции
+CLAUDE.md
+
+# Старая версия (Tkinter) + старые конфиги
+old/
+
+# Конфиги пользователя (создаются автоматически)
+config_films/
+config_settings/
+mkvmerge_gui_config.json
+
+# IDE / кэш
+.idea/
+.claude/
+__pycache__/
+*.pyc
+
+# Syncthing
+.stfolder/
+.stversions/
+
+# Мусор
+NUL
+*.log
+screenshot*.png
+ss_*.png
+*stderr*
