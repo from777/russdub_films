@@ -1748,7 +1748,7 @@ class MKVMergeApp(QMainWindow):
         if hitem:
             hitem.setIcon(self._checkbox_header_icon)
         # Иконка Кинопоиска для заголовка колонки КП
-        _kp_logo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_logo.png")
+        _kp_logo = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_logo.png")
         if os.path.isfile(_kp_logo):
             _kp_hitem = self.table.horizontalHeaderItem(COL_KP)
             if _kp_hitem:
@@ -1941,7 +1941,7 @@ class MKVMergeApp(QMainWindow):
                 b.setIcon(_make_del_video_icon())
                 b.setIconSize(QSize(32, 16))
             elif icon_type == "download":
-                _dl_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+                _dl_icon_path = os.path.join(_SCRIPT_DIR, "icons", "qbittorrent_icon.png")
                 if os.path.isfile(_dl_icon_path):
                     b.setIcon(QIcon(_dl_icon_path))
                     b.setIconSize(QSize(16, 16))
@@ -2644,7 +2644,7 @@ class MKVMergeApp(QMainWindow):
         self.table.setCellWidget(idx, COL_TOR_V, tw)
 
         # --- Forum russdub ---
-        _rd_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "russdub_icon.png")
+        _rd_icon_path = os.path.join(_SCRIPT_DIR, "icons", "russdub_icon.png")
         fmw = QWidget(self.table); fml = QHBoxLayout(fmw); fml.setContentsMargins(2,1,2,1); fml.setSpacing(2)
         forum_entry = QLineEdit(self.table); forum_entry.setFont(BTN_FONT)
         forum_entry.setToolTip("Ссылка на тему форума russdub")
@@ -2670,8 +2670,8 @@ class MKVMergeApp(QMainWindow):
         forum_entry.textChanged.connect(_update_forum_btn)
 
         # --- Кинопоиск ---
-        _kp_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_logo.png")
-        _kp_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_icon.png")
+        _kp_logo_path = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_logo.png")
+        _kp_icon_path = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_icon.png")
         kp_btn = QPushButton(self.table); kp_btn.setFont(BTN_FONT); kp_btn.setFixedWidth(28)
         kp_btn.setToolTip("Поиск на Кинопоиске по названию")
         if os.path.isfile(_kp_icon_path):
@@ -3460,7 +3460,7 @@ class MKVMergeApp(QMainWindow):
         hitem = self.table.horizontalHeaderItem(COL_SELECT)
         if hitem:
             hitem.setIcon(self._checkbox_header_icon)
-        _kp_logo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_logo.png")
+        _kp_logo = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_logo.png")
         if os.path.isfile(_kp_logo):
             _kp_hitem = self.table.horizontalHeaderItem(COL_KP)
             if _kp_hitem:
@@ -4675,7 +4675,7 @@ class MKVMergeApp(QMainWindow):
             return label
 
         # QListWidget с бэкапами
-        _bak_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_films")
+        _bak_dir = os.path.join(_SCRIPT_DIR, "config_films")
         from PySide6.QtWidgets import QListWidget, QListWidgetItem
         _bak_list = QListWidget()
         _bak_list.setFont(QFont("Consolas", 9))
@@ -5341,7 +5341,7 @@ class MKVMergeApp(QMainWindow):
         qbt_layout.setSpacing(8)
         qbt_layout.setContentsMargins(12, 12, 12, 12)
 
-        _qbt_ico_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+        _qbt_ico_path = os.path.join(_SCRIPT_DIR, "icons", "qbittorrent_icon.png")
         _qbt_ico = f'<img src="{_qbt_ico_path}" width="20" height="20">' if os.path.isfile(_qbt_ico_path) else ""
         qbt_header = QLabel(f'Скачивание аудио дорожек через {_qbt_ico} qBittorrent')
         qbt_header.setTextFormat(Qt.RichText)
@@ -6487,7 +6487,7 @@ class MKVMergeApp(QMainWindow):
         lay.addWidget(info)
 
         # Описание логики (HTML для вставки иконки qBittorrent)
-        _qbt_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+        _qbt_icon = os.path.join(_SCRIPT_DIR, "icons", "qbittorrent_icon.png")
         _qbt_img = f'<img src="{_qbt_icon}" width="16" height="16">' if os.path.isfile(_qbt_icon) else ""
         logic_lbl = QLabel(
             "Если есть .torrent файл:<br>"
@@ -6708,7 +6708,7 @@ class MKVMergeApp(QMainWindow):
             import urllib.request
             _settings = {}
             try:
-                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                _sp = os.path.join(_SCRIPT_DIR, "config_settings", "settings.json")
                 if os.path.isfile(_sp):
                     with open(_sp, "r", encoding="utf-8") as f:
                         _settings = __import__("json").load(f)
@@ -6728,7 +6728,7 @@ class MKVMergeApp(QMainWindow):
             import json as _json
             _settings = {}
             try:
-                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                _sp = os.path.join(_SCRIPT_DIR, "config_settings", "settings.json")
                 if os.path.isfile(_sp):
                     with open(_sp, "r", encoding="utf-8") as f:
                         _settings = _json.load(f)
@@ -6895,7 +6895,7 @@ class MKVMergeApp(QMainWindow):
             import json as _json
             _settings = {}
             try:
-                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                _sp = os.path.join(_SCRIPT_DIR, "config_settings", "settings.json")
                 if os.path.isfile(_sp):
                     with open(_sp, "r", encoding="utf-8") as f:
                         _settings = _json.load(f)
@@ -6986,7 +6986,7 @@ class MKVMergeApp(QMainWindow):
             import json as _json
             _settings = {}
             try:
-                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                _sp = os.path.join(_SCRIPT_DIR, "config_settings", "settings.json")
                 if os.path.isfile(_sp):
                     with open(_sp, "r", encoding="utf-8") as f:
                         _settings = _json.load(f)
@@ -7891,7 +7891,7 @@ class MKVMergeApp(QMainWindow):
             btn.setToolTip("Открыть ссылку на форум в браузере")
         else:
             btn.setText("")
-            _icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "russdub_icon.png")
+            _icon = os.path.join(_SCRIPT_DIR, "icons", "russdub_icon.png")
             if os.path.isfile(_icon):
                 btn.setIcon(_make_kp_search_icon(_icon, 48, mag_scale=0.42))
                 btn.setIconSize(QSize(20, 20))
@@ -7910,7 +7910,7 @@ class MKVMergeApp(QMainWindow):
         else:
             # Нет ссылки — иконка КП с лупой (поиск)
             btn.setText("")
-            _icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_icon.png")
+            _icon = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_icon.png")
             if os.path.isfile(_icon):
                 btn.setIcon(_make_kp_search_icon(_icon, 48, mag_scale=0.42))
                 btn.setIconSize(QSize(20, 20))
@@ -8688,7 +8688,7 @@ class MKVMergeApp(QMainWindow):
         _has_tor = bool(tor_files)
         tor_open_btn = QPushButton(f"Торрент ({len(tor_files)})" if _has_tor else "Выбрать торрент файл")
         tor_open_btn.setFont(BTN_FONT)
-        _qbt_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+        _qbt_icon_path = os.path.join(_SCRIPT_DIR, "icons", "qbittorrent_icon.png")
         if os.path.isfile(_qbt_icon_path):
             tor_open_btn.setIcon(QIcon(_qbt_icon_path))
         if _has_tor:
@@ -8741,7 +8741,7 @@ class MKVMergeApp(QMainWindow):
         row_links2.addWidget(fb)
         # Кнопка поиска на RussDub
         rd_search = QPushButton(); rd_search.setFixedSize(_btn_h, _btn_h)
-        _rd_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "russdub_icon.png")
+        _rd_icon_path = os.path.join(_SCRIPT_DIR, "icons", "russdub_icon.png")
         if os.path.isfile(_rd_icon_path):
             rd_search.setIcon(_make_kp_search_icon(_rd_icon_path, 48, mag_scale=0.42))
             rd_search.setIconSize(QSize(20, 20))
@@ -10606,7 +10606,7 @@ class MKVMergeApp(QMainWindow):
         kb.clicked.connect(lambda _, f=fn: self._open_kinopoisk_url(f))
         row_f3.addWidget(kb)
         kp_search = QPushButton(); kp_search.setFixedSize(_btn_h, _btn_h)
-        _kp_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_icon.png")
+        _kp_icon_path = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_icon.png")
         if os.path.isfile(_kp_icon_path):
             kp_search.setIcon(_make_kp_search_icon(_kp_icon_path, 48, mag_scale=0.42))
             kp_search.setIconSize(QSize(20, 20))
@@ -10633,7 +10633,7 @@ class MKVMergeApp(QMainWindow):
         tb.clicked.connect(lambda _, f=fn: self._open_torrent_url(f))
         row_f4.addWidget(tb)
         rt_search = QPushButton(); rt_search.setFixedSize(_btn_h, _btn_h)
-        _rt_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "rutracker_logo.png")
+        _rt_icon_path = os.path.join(_SCRIPT_DIR, "icons", "rutracker_logo.png")
         if os.path.isfile(_rt_icon_path):
             rt_search.setIcon(_make_kp_search_icon(_rt_icon_path, 48, mag_scale=0.42))
             rt_search.setIconSize(QSize(20, 20))
@@ -12072,7 +12072,7 @@ class MKVMergeApp(QMainWindow):
         # --- Файл ---
         ta_file_row = QHBoxLayout()
         ta_file_row.addWidget(QLabel("Файл:"))
-        _qbt_icon_dlg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+        _qbt_icon_dlg = os.path.join(_SCRIPT_DIR, "icons", "qbittorrent_icon.png")
         torrent_btn = QPushButton("Выбрать торрент файл")
         torrent_btn.setToolTip("Выбрать .torrent файл аудио дорожки — он будет ПЕРЕМЕЩЁН в новую папку")
         if os.path.isfile(_qbt_icon_dlg):
@@ -12188,7 +12188,7 @@ class MKVMergeApp(QMainWindow):
         forum_edit.textChanged.connect(_on_forum_text_changed)
         # Кнопка поиска на RussDub
         forum_search_btn = QPushButton(); forum_search_btn.setFixedSize(24, 24)
-        _rd_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "russdub_icon.png")
+        _rd_icon = os.path.join(_SCRIPT_DIR, "icons", "russdub_icon.png")
         if os.path.isfile(_rd_icon):
             forum_search_btn.setIcon(_make_kp_search_icon(_rd_icon, 48, mag_scale=0.42))
             forum_search_btn.setIconSize(QSize(20, 20))
@@ -12251,7 +12251,7 @@ class MKVMergeApp(QMainWindow):
         kp_layout.addWidget(kinopoisk_edit, 1)
         # Кнопка поиска на Кинопоиске
         kp_search_btn = QPushButton(); kp_search_btn.setFixedSize(24, 24)
-        _kp_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_icon.png")
+        _kp_icon = os.path.join(_SCRIPT_DIR, "icons", "kinopoisk_icon.png")
         if os.path.isfile(_kp_icon):
             kp_search_btn.setIcon(_make_kp_search_icon(_kp_icon, 48, mag_scale=0.42))
             kp_search_btn.setIconSize(QSize(20, 20))
@@ -12281,7 +12281,7 @@ class MKVMergeApp(QMainWindow):
         tv_layout.addWidget(torrent_video_edit, 1)
         # Кнопка поиска на RuTracker
         rt_search_btn = QPushButton(); rt_search_btn.setFixedSize(24, 24)
-        _rt_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "rutracker_logo.png")
+        _rt_icon = os.path.join(_SCRIPT_DIR, "icons", "rutracker_logo.png")
         if os.path.isfile(_rt_icon):
             rt_search_btn.setIcon(_make_kp_search_icon(_rt_icon, 48, mag_scale=0.42))
             rt_search_btn.setIconSize(QSize(20, 20))
