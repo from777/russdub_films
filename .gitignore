@@ -19,6 +19,12 @@ __pycache__/
 .stfolder/
 .stversions/
 
+# PyInstaller
+build/
+dist/
+*.spec
+*.exe
+
 # Мусор
 NUL
 *.log

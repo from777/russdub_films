@@ -46,7 +46,12 @@ def _init_mediainfo():
     except ImportError:
         HAS_MEDIAINFO = False
 
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# PyInstaller --onefile распаковывает во временную папку — __file__ указывает туда.
+# sys.executable указывает на сам .exe, поэтому конфиги ищем рядом с ним.
+if getattr(sys, 'frozen', False):
+    _SCRIPT_DIR = os.path.dirname(sys.executable)
+else:
+    _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(_SCRIPT_DIR, "mkvmerge_gui_config.json")  # Оригинал (только миграция)
 _SETTINGS_DIR = os.path.join(_SCRIPT_DIR, "config_settings")
 _FILMS_DIR = os.path.join(_SCRIPT_DIR, "config_films")
@@ -740,6 +745,10 @@ class MKVMergeApp(QMainWindow):
         if readonly:
             _title += "  [ТОЛЬКО ЧТЕНИЕ — сохранение отключено]"
         self.setWindowTitle(_title)
+        # Иконка приложения (заголовок окна + панель задач)
+        _app_icon = os.path.join(_SCRIPT_DIR, "icons", "MKVMerge_GUI.ico")
+        if os.path.isfile(_app_icon):
+            self.setWindowIcon(QIcon(_app_icon))
 
         self.audio_folders = []
         self.video_files = []
