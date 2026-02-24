@@ -6,8 +6,9 @@
 
 Установка Python **не требуется**.
 
-1. Скачать [MKVMerge_GUI.exe](../../releases/latest/download/MKVMerge_GUI.exe) и папку `icons/` из [репозитория](../../archive/refs/heads/master.zip) — или просто [скачать ZIP целиком](../../archive/refs/heads/master.zip) и распаковать
-2. Двойной клик по `MKVMerge_GUI.exe` — программа запустится
+1. Скачать [MKVMerge_GUI.exe](../../releases/latest/download/MKVMerge_GUI.exe) — один файл, иконки уже внутри
+2. Положить в **отдельную папку**
+3. Двойной клик — программа запустится
 
 При запуске рядом с EXE автоматически создадутся папки `config_films/` и `config_settings/` с настройками. Все изменения сохраняются на диск автоматически каждую секунду.
 
