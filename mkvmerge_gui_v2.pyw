@@ -61,11 +61,11 @@ try:
         QTextEdit, QPlainTextEdit, QFileDialog, QMessageBox, QSplitter,
         QComboBox, QMenu, QAbstractItemView, QInputDialog, QDialog,
         QGridLayout, QCheckBox, QTableWidget, QTableWidgetItem, QSpinBox,
-        QSizePolicy, QAbstractScrollArea, QTabWidget, QTabBar, QScrollArea, QFrame,
-        QProgressDialog, QStyledItemDelegate, QStyle, QStyleOptionViewItem
+        QSizePolicy, QAbstractScrollArea, QTabWidget, QTabBar, QScrollArea, QFrame, QStackedWidget,
+        QProgressDialog, QStyledItemDelegate, QStyle, QStyleOptionViewItem, QSplashScreen
     )
-    from PySide6.QtCore import Qt, QTimer, Signal, QSize, QEvent, QObject, QSortFilterProxyModel, QByteArray, QBuffer, QIODevice
-    from PySide6.QtGui import QColor, QFont, QFontMetrics, QAction, QPixmap, QShortcut, QKeySequence, QTextDocument, QIcon, QPalette, QPainter, QPen, QBrush, QIntValidator
+    from PySide6.QtCore import Qt, QTimer, Signal, QSize, QEvent, QObject, QSortFilterProxyModel, QByteArray, QBuffer, QIODevice, QPoint
+    from PySide6.QtGui import QColor, QFont, QFontMetrics, QAction, QPixmap, QShortcut, QKeySequence, QTextDocument, QIcon, QPalette, QPainter, QPen, QBrush, QIntValidator, QScreen
 except ImportError:
     print("=" * 55)
     print("  ОШИБКА: PySide6 не установлен!")
@@ -97,10 +97,10 @@ COLOR_ROW_ODD = "#f0f0f0"
 COLOR_HEADER = "#4a4a4a"
 COLOR_HIGHLIGHT = "#c5d5e8"
 
-HEADERS = ["", "📁", "Дата создания", "♪ Папка", "♪ Аудио дорожка", "▶ Видео файл (источник)", "♪ Задержка",
-           "Аффикс нового файла", "▶ Выходной файл (результат)", "Название", "Год",
+HEADERS = ["", "📁", "Дата создания", "♪ Папка", "♪ Аудио дорожка", "Пароль", "▶ Видео файл (источник)", "♪ Задержка",
+           "Аффикс выходного файла", "▶ Выходной файл (результат)", "Название", "Год",
            "txt", "♪ Т.", "▶ Торрент источника видео", "Форум russdub", "Статус", "Дата обработки",
-           "Абонемент", "Действия"]
+           "Абонемент", "Кинопоиск", "Действия"]
 
 def shorten_russdub_url(url: str) -> str:
     """Сокращает ссылку russdub, убирая лишние параметры.
@@ -173,21 +173,23 @@ COL_OPEN = 1
 COL_DATE_CREATED = 2
 COL_FOLDER = 3
 COL_AUDIO = 4
-COL_VIDEO = 5
-COL_DELAY = 6
-COL_SUFFIX = 7
-COL_OUTPUT = 8
-COL_TITLE = 9
-COL_YEAR = 10
-COL_INFO = 11
-COL_TOR_A = 12
-COL_TOR_V = 13
-COL_FORUM = 14
-COL_STATUS = 15
-COL_DATE = 16
-COL_SUB = 17
-COL_ACTIONS = 18
-NUM_COLS = 19
+COL_PASSWORD = 5
+COL_VIDEO = 6
+COL_DELAY = 7
+COL_SUFFIX = 8
+COL_OUTPUT = 9
+COL_TITLE = 10
+COL_YEAR = 11
+COL_INFO = 12
+COL_TOR_A = 13
+COL_TOR_V = 14
+COL_FORUM = 15
+COL_STATUS = 16
+COL_DATE = 17
+COL_SUB = 18
+COL_KP = 19
+COL_ACTIONS = 20
+NUM_COLS = 21
 
 _MONTHS_RU = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
               "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
@@ -445,6 +447,19 @@ def _make_play_icon(size: int = 128) -> QIcon:
     return QIcon(pm)
 
 
+def _make_download_icon(size: int = 128) -> QIcon:
+    """Создать иконку ⬇ для кнопки Скачать."""
+    from PySide6.QtGui import QPainter, QPixmap, QColor
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setPen(QColor("#2196F3"))
+    p.setFont(QFont("Arial", size - 16, QFont.Bold))
+    p.drawText(0, 0, size, size, Qt.AlignCenter, "⬇")
+    p.end()
+    return QIcon(pm)
+
+
 def _make_eye_icon(size: int = 64, color: str = "#333333") -> QIcon:
     """Создать красивую иконку глаза для кнопки предпросмотра."""
     from PySide6.QtGui import QPainter, QPixmap, QColor, QPen, QBrush, QPainterPath
@@ -683,10 +698,11 @@ HEADER_TOOLTIPS = [
     "Открыть папку в проводнике",
     "Дата создания папки аудио\nБерётся из файловой системы",
     "Подпапка из «Папка аудио дорожек»\nКаждая подпапка = одна строка в таблице",
-    "Аудио дорожка для замены + пароль\nИсточник: подпапка из «Папка аудио дорожек»",
+    "Аудио дорожка для замены\nИсточник: подпапка из «Папка аудио дорожек»",
+    "Пароль от архива с аудио дорожкой\nИспользуется при распаковке RAR архива",
     "Видео файл (исходник)\nИсточник: «Папка видео»\n... — выбрать вручную\n⏳ — пометить что видео скачивается",
     "♪ Задержка аудио дорожки\nКоличество задержек и статус подтверждения\n✓ — есть подтверждённая, ✗ — нет\nРедактирование на вкладке фильма",
-    "Префикс (в начале) и суффикс (в конце) имени выходного файла\nПо умолчанию берётся из настроек «Аффикс нового файла»",
+    "Префикс и суффикс имени выходного файла\nПо умолчанию берётся из настроек «Аффикс выходного файла»",
     "Имя выходного файла\nСохраняется в «Папка тест» при обработке,\nзатем перемещается в «Папка результата»",
     "Название фильма (для справки)\nХранится в конфиге",
     "Год выпуска\nХранится в конфиге",
@@ -697,6 +713,7 @@ HEADER_TOOLTIPS = [
     "Статус обработки\nПроверяет файлы в «Папка видео», «Папка тест», «Папка результата»",
     "Дата и время последней обработки\nХранится в конфиге",
     "Абонемент (год и месяц)\nХранится в конфиге для каждого фильма\nКлик — сортировка по году и месяцу (пустые — внизу)",
+    "Кинопоиск — ссылка или поиск\nЕсть ссылка → открыть\nНет ссылки → поиск по названию и году",
     ""  # COL_ACTIONS — колонка скрыта
 ]
 
@@ -770,6 +787,7 @@ class MKVMergeApp(QMainWindow):
             self.resize(1600, 900)
 
         self._build_ui()
+        _tmp = QLineEdit(); self._btn_h = _tmp.sizeHint().height(); del _tmp  # высота кнопок = высота инпута
 
         # Сигналы для потокобезопасного доступа к UI из рабочего потока
         self._sig_log.connect(self.log)
@@ -795,6 +813,9 @@ class MKVMergeApp(QMainWindow):
         self._tab_splitter_sizes = self.config.get("tab_splitter_sizes", [450, 350])
         # Подсвеченная строка в таблице (ссылка на row dict)
         self._highlighted_row = None
+        # TXT панель внизу — активная кнопка и folder_name
+        self._active_txt_btn = None
+        self._active_txt_fn = None
 
         # Автосохранение конфига
         self._autosave_timer = QTimer(self)
@@ -907,6 +928,8 @@ class MKVMergeApp(QMainWindow):
             "window_x": self.x(),
             "window_y": self.y(),
             "tab_splitter_sizes": self._tab_splitter_sizes,
+            "short_link_default": self.short_link_default_cb.isChecked() if hasattr(self, 'short_link_default_cb') else True,
+            "hidden_status_buttons": self.config.get("hidden_status_buttons", []),
         }
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -1004,6 +1027,7 @@ class MKVMergeApp(QMainWindow):
                 "sort_priority": r.get("sort_priority", 1),
                 "processed_date": r.get("processed_date", ""),
                 "video_pending": r.get("video_pending", False),
+                "_password_error": r.get("_password_error", False),
                 "archive_password": r["password_entry"].text(),
                 "poster_url": r.get("poster_url", ""),
                 "kinopoisk_url": r.get("kinopoisk_url", ""),
@@ -1016,6 +1040,7 @@ class MKVMergeApp(QMainWindow):
                 "video_duration": r["video_dur_lbl"].text(),
                 "extra_audio_variants": r.get("extra_audio_variants", []),
                 "extra_videos": r.get("extra_videos", []),
+                "video_fps": r.get("video_fps", "авто"),
                 "right_tab_idx": self._get_open_tab_right_idx(r),
                 "torrent_confirmed": r.get("torrent_confirmed", False),
                 "extra_torrent_urls": self._get_extra_torrent_urls(r),
@@ -1141,6 +1166,7 @@ class MKVMergeApp(QMainWindow):
         "custom_prefix", "custom_prefix_enabled", "custom_suffix", "custom_suffix_enabled",
         "custom_track_name", "custom_track_name_enabled",
         "is_new", "processed_date", "video_pending", "sort_priority",
+        "video_fps",
     ]
 
     def _load_meta_from_folder(self, folder_path):
@@ -1360,14 +1386,14 @@ class MKVMergeApp(QMainWindow):
         gl = QGridLayout(pg)
         gl.setSpacing(4)
 
-        self.audio_path_edit = self._path_row(gl, 0, "🎵 Папка аудио дорожек:", self.config["audio_path"])
+        self.audio_path_edit = self._path_row(gl, 0, "🎵 Основная папка аудио дорожек:", self.config["audio_path"])
         _tip = "Основная папка с аудио дорожками для фильмов.\nКаждая подпапка = один фильм (одна строка в таблице).\nВ подпапке: аудио файл, архив, торрент, .txt описание."
         gl.itemAtPosition(0, 0).widget().setToolTip(_tip)
         self.audio_path_edit.setToolTip(_tip)
         self.audio_count_lbl = QLabel(""); gl.addWidget(self.audio_count_lbl, 0, 4)
 
         self.download_path_edit = self._path_row(gl, 1, "🎵 Папка куда скачиваются аудио дорожки:", self.config.get("download_path", ""))
-        _tip = "Папка куда скачиваются архивы с аудио дорожками.\nИспользуется как начальная папка в диалоге выбора архива."
+        _tip = "Папка куда торрент-клиент скачивает архивы с аудио дорожками.\n\nНужна только если НЕ используется qBittorrent API.\nЕсли API включён — торренты скачиваются прямо в папку фильма,\nи эта папка не используется.\n\nТакже используется как начальная папка в диалоге выбора архива."
         gl.itemAtPosition(1, 0).widget().setToolTip(_tip)
         self.download_path_edit.setToolTip(_tip)
 
@@ -1454,14 +1480,22 @@ class MKVMergeApp(QMainWindow):
         self.track_name_edit.setMinimumWidth(120)
         self.track_name_edit.setToolTip("Имя аудио дорожки которое будет записано в MKV файл\n(параметр --track-name для mkvmerge)")
         gl.addWidget(self.track_name_edit, 1, 7, 1, 2)
-        # Строка 2: Аффикс для видео файла — в начале + в конце
-        _lbl_prefix = QLabel("Аффикс для видео файла:")
-        _lbl_prefix.setToolTip("Аффикс (префикс/суффикс) добавляемый к имени выходного видео файла.\nЛевое поле — в начало, правое — в конец")
+        # Строка 2: Аффикс — настройки по умолчанию для всех выходных видео файлов
+        _lbl_prefix = QLabel("Аффикс по умолчанию для всех выходных видео файлов:")
+        _lbl_prefix.setToolTip("Аффикс (префикс/суффикс) добавляемый к имени выходного видео файла по умолчанию.\nМожно переопределить для каждого файла отдельно на вкладке фильма.")
         gl.addWidget(_lbl_prefix, 2, 6)
+        _affix_start_w = QWidget()
+        _affix_start_l = QHBoxLayout(_affix_start_w)
+        _affix_start_l.setContentsMargins(0, 0, 0, 0)
+        _affix_start_l.setSpacing(4)
+        _lbl_prefix_in = QLabel("в начале:")
+        _lbl_prefix_in.setToolTip("Этот текст будет добавлен В НАЧАЛО имени выходного файла")
+        _affix_start_l.addWidget(_lbl_prefix_in)
         self.file_prefix_edit = QLineEdit(self.config.get("file_prefix", ""))
         self.file_prefix_edit.setMinimumWidth(60)
         self.file_prefix_edit.setToolTip("Префикс добавляемый ПЕРЕД именем выходного файла\n(например: ATMOS_ → ATMOS_фильм.mkv)")
-        gl.addWidget(self.file_prefix_edit, 2, 7)
+        _affix_start_l.addWidget(self.file_prefix_edit)
+        gl.addWidget(_affix_start_w, 2, 7)
         _affix_end_w = QWidget()
         _affix_end_l = QHBoxLayout(_affix_end_w)
         _affix_end_l.setContentsMargins(0, 0, 0, 0)
@@ -1484,6 +1518,15 @@ class MKVMergeApp(QMainWindow):
                                             "Они выделены цветом и подписаны папкой-владельцем (не кликабельны).\n"
                                             "Выключить — в списках только свободные файлы.")
         self.show_used_videos_cb.toggled.connect(lambda: self._update_all_video_combos())
+
+        # Короткий линк для форума russdub (глобальная настройка по умолчанию)
+        self.short_link_default_cb = QCheckBox("Короткий линк для форума russdub")
+        self.short_link_default_cb.setChecked(self.config.get("short_link_default", True))
+        self.short_link_default_cb.setToolTip("Автоматически сокращать ссылки russdub в таблице при вставке.\n"
+                                              "Убирает лишние параметры (&p=...&hilit=...#p...).\n"
+                                              "На вкладке фильма — своя независимая настройка.")
+        self.short_link_default_cb.toggled.connect(lambda: self.schedule_autosave())
+        gl.addWidget(self.short_link_default_cb, 3, 6, 1, 3)
 
         # --- Stretch + кнопки справа (как было) ---
         gl.setColumnStretch(9, 1)  # Stretch отталкивает кнопки вправо
@@ -1594,7 +1637,7 @@ class MKVMergeApp(QMainWindow):
         self.filter_btn.clicked.connect(self._apply_filter)
         fl.addWidget(self.filter_btn)
         self.filter_reset_btn = QPushButton("Сбросить")
-        self.filter_reset_btn.setToolTip("Сбросить все фильтры и показать все записи")
+        self.filter_reset_btn.setToolTip("Сбросить все фильтры (поиск + статусы) и показать все записи")
         self.filter_reset_btn.clicked.connect(self._reset_filter)
         fl.addWidget(self.filter_reset_btn)
         self.rows_count_lbl = QLabel("")
@@ -1611,27 +1654,75 @@ class MKVMergeApp(QMainWindow):
         status_bar_lbl = QLabel("Статусы:")
         status_bar_lbl.setToolTip("Фильтрация по статусу записи.\nНажмите кнопку — отобразятся только записи с этим статусом.\nПовторный клик — сброс фильтра.")
         status_bar.addWidget(status_bar_lbl)
+        # Все кнопки фильтрации в едином dict: ключ = строка
+        # "new" → is_new, "text:XXX" → status_lbl.text()==XXX, "sp:N" → sort_priority==N, "custom:XXX" → произвольный фильтр
         self._status_filter_btns = {}
-        _status_btn_defs = [
-            ("new",  "NEW",             COLOR_NEW,            "#006600"),
-            (-1, "В тесте",            COLOR_IN_TEST,        "#b37400"),
-            (0,  "К обработке",        COLOR_TO_PROCESS,     "blue"),
-            (4,  "Готово",             COLOR_READY,           "green"),
-            (3,  "Ошибка",            COLOR_ERROR,            "red"),
-            (1,  "Ожидание",          "#e8e8e8",              "#555"),
-            (6,  "Видео в процессе",  COLOR_VIDEO_PENDING,    "#8e44ad"),
-        ]
-        for sp, label, bg_color, text_color in _status_btn_defs:
+        def _add_filter_btn(key, label, bg_color, text_color, tooltip=None):
             sb = QPushButton(f"{label} (0)")
             sb.setCheckable(True)
-            sb.setToolTip(self._STATUS_TOOLTIPS.get(label, f"Показать записи со статусом «{label}»"))
+            sb.setToolTip(tooltip or self._STATUS_TOOLTIPS.get(label, f"Показать записи со статусом «{label}»"))
             sb.setStyleSheet(
                 f"QPushButton{{background-color:{bg_color}; color:{text_color};}}"
                 f"QPushButton:hover{{border:2px solid {text_color};}}"
                 f"QPushButton:checked{{border:3px solid #cc3300;}}")
-            sb.clicked.connect(lambda checked, p=sp: self._on_status_filter(p))
+            sb.clicked.connect(lambda checked, k=key: self._on_status_filter(k))
             status_bar.addWidget(sb)
-            self._status_filter_btns[sp] = sb
+            self._status_filter_btns[key] = sb
+        # --- Индивидуальные статусы (то что пишется в колонке «Статус») ---
+        _add_filter_btn("new",                   "NEW",               COLOR_NEW,            "#006600")
+        _add_filter_btn("text:К обработке",      "К обработке",       COLOR_TO_PROCESS,     "blue")
+        _add_filter_btn("text:Готово",           "Готово",            COLOR_READY,           "green")
+        _add_filter_btn("text:В тесте",          "В тесте",           COLOR_IN_TEST,        "#b37400")
+        _add_filter_btn("text:Нет аудио",        "Нет аудио",         COLOR_ERROR,          "red")
+        _add_filter_btn("text:Нет видео",        "Нет видео",         COLOR_ERROR,          "red")
+        _add_filter_btn("text:TXT!",             "TXT!",              COLOR_TXT_WARN,       "orange")
+        _add_filter_btn("text:Видео в процессе", "Видео в процессе",  COLOR_VIDEO_PENDING,  "#8e44ad")
+        _add_filter_btn("text:Неверный пароль",  "Неверный пароль",   COLOR_ERROR,          "red")
+        _add_filter_btn("text:Ожидает видео",    "Ожидает видео",     "#e8e8e8",            "#cc6600")
+        _add_filter_btn("text:Ожидает аудио",    "Ожидает аудио",     "#e8e8e8",            "#cc6600")
+        _add_filter_btn("text:Нет файлов",       "Нет файлов",        "#e8e8e8",            "gray")
+        _add_filter_btn("text:Чудовищная ошибка","Чудовищная ошибка",  "#ffe0e0",           "#cc0000")
+        # --- Разделитель: группы статусов ---
+        _sep1 = QFrame(); _sep1.setFrameShape(QFrame.VLine); _sep1.setStyleSheet("color: #aaa;")
+        status_bar.addWidget(_sep1)
+        _add_filter_btn("sp:3", "Ошибка",   COLOR_ERROR, "red",
+                         "Группа: «Нет аудио» + «Нет видео»\nФайл выбран, но не найден на диске")
+        _add_filter_btn("sp:1", "Ожидание", "#e8e8e8",   "#555",
+                         "Группа: «Ожидает видео» + «Ожидает аудио» + «Нет файлов» + «Чудовищная ошибка»")
+        # --- Разделитель: произвольные фильтры ---
+        _sep2 = QFrame(); _sep2.setFrameShape(QFrame.VLine); _sep2.setStyleSheet("color: #aaa;")
+        status_bar.addWidget(_sep2)
+        _add_filter_btn("custom:no_audio_no_archive", "Нет аудио и архива", "#fff0e0", "#996600",
+                         "Показать записи без аудио файла (>1 ГБ) и без архива")
+        _add_filter_btn("custom:no_forum_url",        "Нет ссылки russdub", "#f0e0ff", "#660099",
+                         "Показать записи без ссылки на форум russdub")
+        # Выровнять высоту всех кнопок фильтрации
+        _filter_btn_h = list(self._status_filter_btns.values())[0].sizeHint().height() if self._status_filter_btns else 22
+        for _fb in self._status_filter_btns.values():
+            _fb.setFixedHeight(_filter_btn_h)
+        # Кнопка ⚙ настройки видимости кнопок
+        self._status_settings_btn = QPushButton("⚙")
+        self._status_settings_btn.setFixedSize(_filter_btn_h, _filter_btn_h)
+        self._status_settings_btn.setToolTip("Настроить видимость кнопок фильтрации по статусам")
+        self._status_settings_btn.clicked.connect(self._show_status_filter_settings)
+        status_bar.addWidget(self._status_settings_btn)
+        # Восстановить видимость кнопок из настроек
+        # При первом запуске (нет настройки) — показать только основные кнопки
+        _hidden = self.config.get("hidden_status_buttons", None)
+        if _hidden is None:
+            # Первый запуск — скрыть детальные статусы, показать основные + группы
+            _hidden = [
+                "text:Нет аудио", "text:Нет видео",            # детали → есть группа «Ошибка»
+                "text:TXT!",                                    # редкий
+                "text:Неверный пароль",                         # редкий
+                "text:Ожидает видео", "text:Ожидает аудио",    # детали → есть группа «Ожидание»
+                "text:Нет файлов", "text:Чудовищная ошибка",   # детали → есть группа «Ожидание»
+                "custom:no_audio_no_archive",                   # кастомный
+                "custom:no_forum_url",                          # кастомный
+            ]
+        for key, btn in self._status_filter_btns.items():
+            if key in _hidden:
+                btn.setVisible(False)
         status_bar.addStretch()
         # status_bar_widget добавляется ниже — под таблицей, над логом
 
@@ -1647,6 +1738,13 @@ class MKVMergeApp(QMainWindow):
         hitem = self.table.horizontalHeaderItem(COL_SELECT)
         if hitem:
             hitem.setIcon(self._checkbox_header_icon)
+        # Иконка Кинопоиска для заголовка колонки КП
+        _kp_logo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_logo.png")
+        if os.path.isfile(_kp_logo):
+            _kp_hitem = self.table.horizontalHeaderItem(COL_KP)
+            if _kp_hitem:
+                _kp_hitem.setIcon(QIcon(_kp_logo))
+                _kp_hitem.setText("")  # Только иконка
         self.table.verticalHeader().hide()
         self.table.verticalHeader().setSectionsMovable(True)
         self.table.setSelectionMode(QAbstractItemView.NoSelection)
@@ -1698,9 +1796,9 @@ class MKVMergeApp(QMainWindow):
         col_vis_layout.addWidget(lbl, 0, Qt.AlignVCenter)
         self._col_checkboxes = []
         # Короткие названия для чекбоксов
-        short_names = ["☑", "📁", "Создана", "♪Папка", "♪Дорожка", "▶Источник", "♪Задержка",
+        short_names = ["☑", "📁", "Создана", "♪Папка", "♪Дорожка", "Пароль", "▶Источник", "♪Задержка",
                        "Пре/Суфф", "▶Выходной", "Название", "Год",
-                       "txt", "♪Т.", "▶Торрент", "Форум", "Статус", "Дата", "Абон.", "Действия"]
+                       "txt", "♪Т.", "▶Торрент", "Форум", "Статус", "Дата", "Абон.", "КП", "Действия"]
         for i in range(NUM_COLS):
             if i == COL_ACTIONS:
                 # Колонка скрыта навсегда — чекбокс не нужен
@@ -1753,7 +1851,16 @@ class MKVMergeApp(QMainWindow):
         col_vis_layout.addStretch()
         tl.addLayout(col_vis_layout)
 
-        tl.addWidget(self.table)
+        # QStackedWidget: страница 0 = таблица, страница 1 = лейбл загрузки
+        self._table_stack = QStackedWidget()
+        self._table_stack.addWidget(self.table)          # index 0
+        self._loading_label = QLabel("Загрузка...")
+        self._loading_label.setAlignment(Qt.AlignCenter)
+        self._loading_label.setStyleSheet(
+            "font-size: 48px; font-weight: bold; color: #336699; padding: 80px;")
+        self._table_stack.addWidget(self._loading_label)  # index 1
+        self._table_stack.setCurrentIndex(0)
+        tl.addWidget(self._table_stack)
 
         # === ПАНЕЛЬ ДЕЙСТВИЙ ДЛЯ ВЫБРАННЫХ (QGroupBox с рамкой, 2 строки) ===
         self.batch_bar_widget = QGroupBox("Действия для выбранных:")
@@ -1777,6 +1884,8 @@ class MKVMergeApp(QMainWindow):
         _batch_defs = [
             ("batch_process_btn", "Обработать", "#cce5ff", "btn_play", self._process_single,
              "Запустить mkvmerge для всех выбранных строк со статусом «К обработке»", "play"),
+            ("batch_download_btn", "Скачать", "#e0f0ff", "btn_download", self._action_download,
+             "Скачать аудио дорожки: торрент-файл → торрент-клиент, ссылка → браузер", "download"),
             ("batch_to_res_btn", "В Результат", "#ccffcc", "btn_to_res", self._action_to_result,
              "Переместить тестовые файлы в результат для всех выбранных строк", "to_result"),
             ("batch_unrar_btn", "Архив", "#ffe4c4", "btn_unrar", self._action_unrar,
@@ -1822,6 +1931,11 @@ class MKVMergeApp(QMainWindow):
             elif icon_type == "video":
                 b.setIcon(_make_del_video_icon())
                 b.setIconSize(QSize(32, 16))
+            elif icon_type == "download":
+                _dl_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+                if os.path.isfile(_dl_icon_path):
+                    b.setIcon(QIcon(_dl_icon_path))
+                    b.setIconSize(QSize(16, 16))
             if bg_color == "#ffcccc":
                 hover_bg = "#ff9999"
             elif bg_color == "#ccffcc":
@@ -1894,7 +2008,7 @@ class MKVMergeApp(QMainWindow):
         _batch_vbox.addLayout(_batch_row2)
 
         # === ВКЛАДКИ: таблица + записи ===
-        self.tab_widget = QTabWidget()
+        self.tab_widget = QTabWidget(central)
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self._close_record_tab)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
@@ -1920,7 +2034,7 @@ class MKVMergeApp(QMainWindow):
         # Репозиционировать при изменении размера tabBar
         self.tab_widget.tabBar().installEventFilter(self)
 
-        # === TXT (скрытый, для совместимости с _handle_info/_open_txt) ===
+        # === TXT панель (показывается при клике на кнопку txt) ===
         self.txt_group = QGroupBox("Содержимое txt")
         self.txt_group.setVisible(False)
         txl = QVBoxLayout(self.txt_group)
@@ -1949,9 +2063,14 @@ class MKVMergeApp(QMainWindow):
         _tc_layout.addWidget(fg)
         _tc_layout.addWidget(self.status_bar_widget)
 
-        splitter = QSplitter(Qt.Vertical)
+        self.bottom_splitter = QSplitter(Qt.Horizontal)
+        self.bottom_splitter.addWidget(log_g)
+        self.bottom_splitter.addWidget(self.txt_group)
+        self.txt_group.setVisible(False)
+
+        splitter = QSplitter(Qt.Vertical, central)
         splitter.addWidget(table_container)
-        splitter.addWidget(log_g)
+        splitter.addWidget(self.bottom_splitter)
         splitter.setSizes([600, 250])
         ml.addWidget(splitter, 1)
 
@@ -2154,6 +2273,18 @@ class MKVMergeApp(QMainWindow):
         return data if data else ""
 
     _AUDIO_MAIN_THRESHOLD = 1024 ** 3  # 1 ГБ — порог для основной аудио дорожки
+
+    def _has_main_audio(self, r):
+        """True если в папке есть хотя бы один аудио файл >= 1 ГБ (основная дорожка).
+        Маленькие файлы (< 1 ГБ) — стартовые/финальные, НЕ считаются основной дорожкой."""
+        fp = r.get("folder_path", "")
+        for fn in r.get("audio_files", []):
+            try:
+                if os.path.getsize(os.path.join(fp, fn)) >= self._AUDIO_MAIN_THRESHOLD:
+                    return True
+            except OSError:
+                pass
+        return False
 
     def _populate_audio_combo(self, combo, files, folder_path):
         """Заполнить комбобокс основных аудио файлов (ТОЛЬКО файлы >= 1 ГБ)."""
@@ -2359,17 +2490,17 @@ class MKVMergeApp(QMainWindow):
         # Пароль от архива с аудио дорожкой
         password_entry = QLineEdit(""); password_entry.setFont(BTN_FONT)
         password_entry.setPlaceholderText("пароль...")
-        password_entry.setFixedWidth(90)
         password_entry.setToolTip("Пароль от архива с аудио дорожкой (для расшифровки RAR архива)")
         move_archive_btn = QPushButton("📦"); move_archive_btn.setFont(BTN_FONT)
         move_archive_btn.setFixedWidth(28)
         move_archive_btn.setToolTip("Переместить архив с аудио дорожкой в эту папку")
-        # Виджеты данных без parent — не отображаются, используются для хранения данных
+        # Виджеты данных
         audio_summary = QLabel("", self.table)
         audio_summary.setFont(BTN_FONT)
         audio_summary.setTextFormat(Qt.RichText)
         audio_summary.setAlignment(Qt.AlignCenter)
         self.table.setCellWidget(idx, COL_AUDIO, audio_summary)
+        self.table.setCellWidget(idx, COL_PASSWORD, password_entry)
 
         # --- 3: Video — виджеты данных (скрыты) + summary label + кнопка ⏳ ---
         video_combo = NoScrollComboBox(); video_combo.setFont(BTN_FONT)
@@ -2504,13 +2635,40 @@ class MKVMergeApp(QMainWindow):
         self.table.setCellWidget(idx, COL_TOR_V, tw)
 
         # --- Forum russdub ---
+        _rd_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "russdub_icon.png")
         fmw = QWidget(self.table); fml = QHBoxLayout(fmw); fml.setContentsMargins(2,1,2,1); fml.setSpacing(2)
         forum_entry = QLineEdit(self.table); forum_entry.setFont(BTN_FONT)
         forum_entry.setToolTip("Ссылка на тему форума russdub")
-        forum_open_btn = QPushButton("→", self.table); forum_open_btn.setFont(BTN_FONT); forum_open_btn.setFixedWidth(24)
-        forum_open_btn.setToolTip("Открыть ссылку на форум в браузере")
+        forum_open_btn = QPushButton(self.table); forum_open_btn.setFont(BTN_FONT); forum_open_btn.setFixedWidth(28)
+        # Начальное состояние: иконка russdub+лупа (поиск)
+        if os.path.isfile(_rd_icon_path):
+            forum_open_btn.setIcon(_make_kp_search_icon(_rd_icon_path, 48, mag_scale=0.42))
+            forum_open_btn.setIconSize(QSize(20, 20))
+        forum_open_btn.setToolTip("Поиск на форуме russdub по названию\nЗапрос: «название + год + завершен»")
         fml.addWidget(forum_entry, 1); fml.addWidget(forum_open_btn)
         self.table.setCellWidget(idx, COL_FORUM, fmw)
+        # Обновление кнопки форума: → если есть ссылка, иконка russdub+лупа если нет
+        def _update_forum_btn(text, btn=forum_open_btn, icon_path=_rd_icon_path):
+            if text.strip():
+                btn.setIcon(QIcon())  # Убрать иконку
+                btn.setText("→"); btn.setToolTip("Открыть ссылку на форум в браузере")
+            else:
+                btn.setText("")
+                if os.path.isfile(icon_path):
+                    btn.setIcon(_make_kp_search_icon(icon_path, 48, mag_scale=0.42))
+                    btn.setIconSize(QSize(20, 20))
+                btn.setToolTip("Поиск на форуме russdub по названию\nЗапрос: «название + год + завершен»")
+        forum_entry.textChanged.connect(_update_forum_btn)
+
+        # --- Кинопоиск ---
+        _kp_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_logo.png")
+        _kp_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_icon.png")
+        kp_btn = QPushButton(self.table); kp_btn.setFont(BTN_FONT); kp_btn.setFixedWidth(28)
+        kp_btn.setToolTip("Поиск на Кинопоиске по названию")
+        if os.path.isfile(_kp_icon_path):
+            kp_btn.setIcon(_make_kp_search_icon(_kp_icon_path, 48, mag_scale=0.42))
+            kp_btn.setIconSize(QSize(20, 20))
+        self.table.setCellWidget(idx, COL_KP, kp_btn)
 
         # --- 12: Status ---
         status_lbl = QLabel("", self.table); status_lbl.setFont(QFont("Arial", 9, QFont.Bold))
@@ -2571,42 +2729,49 @@ class MKVMergeApp(QMainWindow):
 
         # --- COL_ACTIONS: Actions (как в batch_bar) ---
         aw = QWidget(self.table); al = QHBoxLayout(aw); al.setContentsMargins(0,0,0,0); al.setSpacing(0)
-        btn_play = QPushButton("Обработать")
+        btn_play = QPushButton("Обработать", aw)
         btn_play.setIcon(_make_play_icon())
         btn_play.setIconSize(QSize(16, 16))
         btn_play.setStyleSheet("QPushButton{background-color:#cce5ff;} QPushButton:hover{background-color:#99ccff;} QPushButton:disabled{background-color:#cce5ff;}")
         btn_play.setToolTip("Запустить mkvmerge для этого файла"); btn_play.setVisible(False)
         al.addWidget(btn_play)
-        btn_unrar = QPushButton("Архив")
+        btn_download = QPushButton("Скачать", aw)
+        btn_download.setIcon(_make_download_icon())
+        btn_download.setIconSize(QSize(16, 16))
+        btn_download.setStyleSheet("QPushButton{background-color:#e0f0ff;} QPushButton:hover{background-color:#99ccff;} QPushButton:disabled{background-color:#e0f0ff;}")
+        btn_download.setToolTip("Скачать аудио дорожку: торрент-файл → торрент-клиент, ссылка → браузер")
+        btn_download.setVisible(False)
+        al.addWidget(btn_download)
+        btn_unrar = QPushButton("Архив", aw)
         btn_unrar.setIcon(_make_unrar_icon())
         btn_unrar.setIconSize(QSize(32, 16))
         btn_unrar.setStyleSheet("QPushButton{background-color:#ffe4c4;} QPushButton:hover{background-color:#ffc896;} QPushButton:disabled{background-color:#ffe4c4;}")
         btn_unrar.setToolTip("Расшифровать и распаковать RAR архив используя пароль")
         btn_unrar.setVisible(False)
         al.addWidget(btn_unrar)
-        btn_del_archive = QPushButton("Архив")
+        btn_del_archive = QPushButton("Архив", aw)
         btn_del_archive.setIcon(_make_del_archive_icon())
         btn_del_archive.setIconSize(QSize(32, 16))
         btn_del_archive.setStyleSheet("QPushButton{background-color:#ffcccc;} QPushButton:hover{background-color:#ff9999;} QPushButton:disabled{background-color:#ffcccc;}")
         btn_del_archive.setToolTip("Удалить архив (архив уже распакован)")
         btn_del_archive.setVisible(False)
         al.addWidget(btn_del_archive)
-        btn_to_res = QPushButton("В Результат")
+        btn_to_res = QPushButton("В Результат", aw)
         btn_to_res.setIcon(_make_to_result_icon())
         btn_to_res.setIconSize(QSize(32, 16))
         btn_to_res.setStyleSheet("QPushButton{background-color:#ccffcc;} QPushButton:hover{background-color:#99ff99;} QPushButton:disabled{background-color:#ccffcc;}")
         btn_to_res.setToolTip("Переместить тестовый файл в папку результата\nРазмер — суммарный по всем выходным файлам. Цифра (N) — количество файлов")
-        btn_del_test = QPushButton("Тест")
+        btn_del_test = QPushButton("Тест", aw)
         btn_del_test.setIcon(_make_del_video_icon())
         btn_del_test.setIconSize(QSize(32, 16))
         btn_del_test.setStyleSheet("QPushButton{background-color:#ffcccc;} QPushButton:hover{background-color:#ff9999;} QPushButton:disabled{background-color:#ffcccc;}")
         btn_del_test.setToolTip("Удалить тестовое видео из папки тест\nРазмер — суммарный по всем выходным файлам. Цифра (N) — количество файлов")
-        btn_del_src = QPushButton("Источник")
+        btn_del_src = QPushButton("Источник", aw)
         btn_del_src.setIcon(_make_del_video_icon())
         btn_del_src.setIconSize(QSize(32, 16))
         btn_del_src.setStyleSheet("QPushButton{background-color:#ffcccc;} QPushButton:hover{background-color:#ff9999;} QPushButton:disabled{background-color:#ffcccc;}")
         btn_del_src.setToolTip("Удалить видео источник из папки видео")
-        btn_del_res = QPushButton("Результат")
+        btn_del_res = QPushButton("Результат", aw)
         btn_del_res.setIcon(_make_del_video_icon())
         btn_del_res.setIconSize(QSize(32, 16))
         btn_del_res.setStyleSheet("QPushButton{background-color:#ffcccc;} QPushButton:hover{background-color:#ff9999;} QPushButton:disabled{background-color:#ffcccc;}")
@@ -2640,13 +2805,15 @@ class MKVMergeApp(QMainWindow):
             "ta_btn": ta_btn, "tor_files": tor_files,
             "torrent_entry": torrent_entry, "tor_open_btn": tor_open_btn,
             "forum_entry": forum_entry, "forum_open_btn": forum_open_btn,
+            "kp_btn": kp_btn,
             "status_lbl": status_lbl,
             "date_lbl": date_lbl, "processed_date": "",
             "date_created_lbl": date_created_lbl, "folder_created": folder_ctime,
             "password_entry": password_entry,
             "move_archive_btn": move_archive_btn,
             "sub_year": sub_year, "sub_month": sub_month,
-            "btn_play": btn_play, "btn_unrar": btn_unrar, "btn_del_archive": btn_del_archive,
+            "btn_play": btn_play, "btn_download": btn_download,
+            "btn_unrar": btn_unrar, "btn_del_archive": btn_del_archive,
             "btn_to_res": btn_to_res, "btn_del_test": btn_del_test,
             "btn_del_src": btn_del_src, "btn_del_res": btn_del_res,
             "archive_file": archive_file,
@@ -2662,6 +2829,7 @@ class MKVMergeApp(QMainWindow):
             "extra_videos": [],             # [{"video": "", "video_full_path": "", "video_manual": False}, ...]
             "custom_track_name_enabled": False,
             "custom_track_name": "",
+            "video_fps": "авто",            # FPS видео для --default-duration
         }
         if insert_at is not None:
             self.rows.insert(insert_at, row)
@@ -2682,12 +2850,13 @@ class MKVMergeApp(QMainWindow):
         prefix_cb.toggled.connect(lambda checked, r=row: self._on_prefix_toggle(r["folder_name"]))
         suffix_cb.toggled.connect(lambda checked, r=row: self._on_suffix_toggle(r["folder_name"]))
         rename_btn.clicked.connect(lambda _, r=row: self._action_rename(r["folder_name"]))
-        info_btn.clicked.connect(lambda _, r=row: self._handle_info(r["folder_name"]))
+        info_btn.clicked.connect(lambda _, r=row: self._toggle_txt_panel(r["folder_name"]))
         sub_year.currentTextChanged.connect(lambda t: self.schedule_autosave())
         sub_month.currentTextChanged.connect(lambda t: self.schedule_autosave())
         # ta_btn использует QMenu — обработчик клика не нужен
         tor_open_btn.clicked.connect(lambda _, r=row: self._open_torrent_url(r["folder_name"]))
         forum_open_btn.clicked.connect(lambda _, r=row: self._open_forum_url(r["folder_name"]))
+        kp_btn.clicked.connect(lambda _, r=row: self._open_or_search_kinopoisk(r["folder_name"]))
         btn_play.clicked.connect(lambda _, r=row: self._process_single(r["folder_name"]))
         btn_unrar.clicked.connect(lambda _, r=row: self._action_unrar(r["folder_name"]))
         btn_del_archive.clicked.connect(lambda _, r=row: self._action_del_archive(r["folder_name"]))
@@ -2706,6 +2875,17 @@ class MKVMergeApp(QMainWindow):
         # autosave при изменении полей
         title_entry.textChanged.connect(lambda: self.schedule_autosave())
         year_entry.textChanged.connect(lambda: self.schedule_autosave())
+        forum_entry.textChanged.connect(lambda: (self.schedule_autosave(), self._update_status_filter_counts()))
+        # Короткий линк для форума — при окончании редактирования
+        def _shorten_forum_in_table(fe=forum_entry):
+            if hasattr(self, 'short_link_default_cb') and self.short_link_default_cb.isChecked():
+                txt = fe.text()
+                shortened = shorten_russdub_url(txt)
+                if shortened != txt:
+                    fe.blockSignals(True)
+                    fe.setText(shortened)
+                    fe.blockSignals(False)
+        forum_entry.editingFinished.connect(_shorten_forum_in_table)
         torrent_entry.textChanged.connect(lambda: self.schedule_autosave())
         prefix_entry.textChanged.connect(lambda: self.schedule_autosave())
         prefix_entry.textChanged.connect(lambda text, r=row: self._recalc_output_name(r["folder_name"]))
@@ -3064,6 +3244,7 @@ class MKVMergeApp(QMainWindow):
         # Определить активный status filter
         active_sp = None
         active_new = False
+        active_custom = None
         active_key = getattr(self, '_active_preview_key', None)
         if active_key and active_key.startswith('_status_filter_'):
             suffix = active_key.replace('_status_filter_', '')
@@ -3072,6 +3253,8 @@ class MKVMergeApp(QMainWindow):
             else:
                 try: active_sp = int(suffix)
                 except ValueError: pass
+        elif active_key and active_key.startswith('_custom_filter_'):
+            active_custom = active_key.replace('_custom_filter_', '')
         for r in self.rows:
             show = True
             if folder and folder not in r["folder_name"].lower():
@@ -3089,16 +3272,20 @@ class MKVMergeApp(QMainWindow):
                 show = False
             elif active_sp is not None and r.get("sort_priority", 1) != active_sp:
                 show = False
+            elif active_custom and not self._match_custom_filter(r, active_custom):
+                show = False
             self.table.setRowHidden(r["row_index"], not show)
         self._update_rows_count()
 
     def _reset_filter(self):
-        """Сбросить все фильтры и показать все строки."""
+        """Сбросить все фильтры (поиск + статусы) и показать все строки."""
         self.filter_folder.clear()
         self.filter_title.clear()
         self.filter_year.clear()
         self.filter_sub_year.setCurrentIndex(0)
         self.filter_sub_month.setCurrentIndex(0)
+        # Сбросить фильтры по статусам и кастомные фильтры
+        self._clear_batch_preview()
         for r in self.rows:
             self.table.setRowHidden(r["row_index"], False)
         self._update_rows_count()
@@ -3190,7 +3377,9 @@ class MKVMergeApp(QMainWindow):
             elif col == "year":
                 try: return int(r["year_entry"].text() or "0")
                 except: return 0
-            elif col == "status": return r.get("sort_priority", 1)
+            elif col == "status":
+                if r.get("is_new"): return 5  # Все NEW группируются вместе
+                return r.get("sort_priority", 1)
             elif col == "date": return r.get("processed_date", "") or ""
             elif col == "date_created": return r.get("folder_created", "") or ""
             elif col == "sub":
@@ -3212,7 +3401,9 @@ class MKVMergeApp(QMainWindow):
             elif col == "output": return _count_output_files(r) == 0
             elif col == "title": return not r["title_entry"].text().strip()
             elif col == "year": return not r["year_entry"].text().strip()
-            elif col == "status": return r.get("sort_priority", 1) in (1,)
+            elif col == "status":
+                if r.get("is_new"): return False  # NEW — никогда не пустая
+                return r.get("sort_priority", 1) in (1,)
             elif col == "date": return not r.get("processed_date", "")
             elif col == "date_created": return not r.get("folder_created", "")
             elif col == "sub": return r["sub_year"].currentText() == "—" and r["sub_month"].currentText() == "—"
@@ -3256,10 +3447,16 @@ class MKVMergeApp(QMainWindow):
             else:
                 labels.append(base)
         self.table.setHorizontalHeaderLabels(labels)
-        # Восстановить иконку-чекбокс (setHorizontalHeaderLabels пересоздаёт items)
+        # Восстановить иконки заголовков (setHorizontalHeaderLabels пересоздаёт items)
         hitem = self.table.horizontalHeaderItem(COL_SELECT)
         if hitem:
             hitem.setIcon(self._checkbox_header_icon)
+        _kp_logo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_logo.png")
+        if os.path.isfile(_kp_logo):
+            _kp_hitem = self.table.horizontalHeaderItem(COL_KP)
+            if _kp_hitem:
+                _kp_hitem.setIcon(QIcon(_kp_logo))
+                _kp_hitem.setText("")
         self._set_header_tooltips()
 
     def _set_header_tooltips(self):
@@ -3347,6 +3544,7 @@ class MKVMergeApp(QMainWindow):
             # Мультивыбор: дополнительные аудио варианты и видео
             r["extra_audio_variants"] = m.get("extra_audio_variants", [])
             r["extra_videos"] = m.get("extra_videos", [])
+            r["video_fps"] = m.get("video_fps", "авто")
             if m.get("output"): r["output_entry"].setText(m["output"])
             r["title_entry"].setText(m.get("title", ""))
             r["year_entry"].setText(m.get("year", ""))
@@ -3360,11 +3558,13 @@ class MKVMergeApp(QMainWindow):
             r["custom_track_name"] = m.get("custom_track_name", "")
             r["torrent_entry"].setText(m.get("torrent_url", ""))
             r["forum_entry"].setText(m.get("forum_url", ""))
+            self._update_forum_open_btn(r)
             r["sort_priority"] = m.get("sort_priority", 1)
             r["processed_date"] = m.get("processed_date", "")
             if r["processed_date"]:
                 r["date_lbl"].setText(r["processed_date"])
             r["video_pending"] = m.get("video_pending", False)
+            r["_password_error"] = m.get("_password_error", False)
             if r["video_pending"]:
                 r["video_pending_btn"].setText("⌛")
                 r["video_pending_btn"].setStyleSheet("color:#8e44ad; font-weight:bold;")
@@ -3380,6 +3580,7 @@ class MKVMergeApp(QMainWindow):
                 r["password_entry"].setText(m["archive_password"])
             r["poster_url"] = m.get("poster_url", "")
             r["kinopoisk_url"] = m.get("kinopoisk_url", "")
+            self._update_kp_btn_icon(r)
             r["audio_torrent_url"] = m.get("audio_torrent_url", "")
             sel_txt = m.get("selected_txt", "")
             if sel_txt and sel_txt in r["txt_files"]:
@@ -3456,9 +3657,11 @@ class MKVMergeApp(QMainWindow):
         self._sync_delays_to_table(r)
         if meta.get("torrent_url"): r["torrent_entry"].setText(meta["torrent_url"])
         if meta.get("forum_url"): r["forum_entry"].setText(meta["forum_url"])
+        self._update_forum_open_btn(r)
         if meta.get("archive_password"): r["password_entry"].setText(meta["archive_password"])
         r["poster_url"] = meta.get("poster_url", r.get("poster_url", ""))
         r["kinopoisk_url"] = meta.get("kinopoisk_url", r.get("kinopoisk_url", ""))
+        self._update_kp_btn_icon(r)
         r["audio_torrent_url"] = meta.get("audio_torrent_url", r.get("audio_torrent_url", ""))
         if meta.get("sub_year"): r["sub_year"].setCurrentText(meta["sub_year"])
         if meta.get("sub_month"): r["sub_month"].setCurrentText(meta["sub_month"])
@@ -3477,7 +3680,9 @@ class MKVMergeApp(QMainWindow):
         if r["processed_date"]:
             r["date_lbl"].setText(r["processed_date"])
         r["video_pending"] = meta.get("video_pending", r.get("video_pending", False))
+        r["_password_error"] = meta.get("_password_error", r.get("_password_error", False))
         r["selected_audio_tracks"] = meta.get("selected_audio_tracks", r.get("selected_audio_tracks"))
+        r["video_fps"] = meta.get("video_fps", r.get("video_fps", "авто"))
 
     def _get_video_usage_map(self):
         """Возвращает dict {video_name: [folder_name, ...]} — какие видео кем заняты."""
@@ -3547,6 +3752,8 @@ class MKVMergeApp(QMainWindow):
         "✦ NEW": "#006600",
         "Ожидает видео": "#cc6600", "Ожидает аудио": "#cc6600",
         "Нет файлов": "gray", "Ожидание": "gray",
+        "Чудовищная ошибка": "#cc0000",
+        "Неверный пароль": "red",
     }
 
     @staticmethod
@@ -3555,7 +3762,10 @@ class MKVMergeApp(QMainWindow):
         colors = MKVMergeApp._STATUS_COLORS
         c = colors.get(text, "")
         if c:
-            return f"color:{c}; font-weight:bold;"
+            extra = ""
+            if text == "Чудовищная ошибка":
+                extra = " background-color:#ffe0e0;"
+            return f"color:{c}; font-weight:bold;{extra}"
         return ""
 
     #  Статусы
@@ -3622,6 +3832,7 @@ class MKVMergeApp(QMainWindow):
             r["sort_priority"] = 6
             r["is_new"] = False  # Видео в процессе — больше не NEW
             r["btn_play"].setVisible(False)
+            r["btn_download"].setVisible(False)
             r["btn_to_res"].setVisible(False)
             r["btn_del_test"].setVisible(False)
             r["btn_del_src"].setVisible(False)
@@ -3634,6 +3845,26 @@ class MKVMergeApp(QMainWindow):
                 if slbl:
                     slbl.setText("Видео в процессе")
                     slbl.setStyleSheet(self._status_text_style("Видео в процессе"))
+            self._update_audio_summary(r)
+            self._update_video_summary(r)
+            self._update_output_summary(r)
+            self._schedule_batch_update()
+            return
+
+        # Неверный пароль — сбрасывается ТОЛЬКО при успешной распаковке
+        if r.get("_password_error"):
+            r["status_lbl"].setText("Неверный пароль")
+            r["status_lbl"].setStyleSheet("color:red; font-weight:bold;")
+            r["status_lbl"].setToolTip(self._STATUS_TOOLTIPS.get("Неверный пароль", ""))
+            self._set_row_bg(r, COLOR_ERROR)
+            r["sort_priority"] = 5
+            fn = r["folder_name"]
+            if fn in self._open_tabs:
+                tw = self._open_tabs[fn]["widgets"]
+                slbl = tw.get("status_lbl")
+                if slbl:
+                    slbl.setText("Неверный пароль")
+                    slbl.setStyleSheet(self._status_text_style("Неверный пароль"))
             self._update_audio_summary(r)
             self._update_video_summary(r)
             self._update_output_summary(r)
@@ -3721,7 +3952,7 @@ class MKVMergeApp(QMainWindow):
             pass
         r["archive_file"] = archive_file
         has_archive = bool(archive_file)
-        has_audio = bool(r["audio_files"]) and r["audio_files"] != []
+        has_audio = self._has_main_audio(r)  # >= 1 ГБ, маленькие файлы — стартовые
 
         # Обновить текст аудио комбобокса если нет аудио но есть архив
         if not has_audio and has_archive:
@@ -3746,6 +3977,20 @@ class MKVMergeApp(QMainWindow):
                 r["audio_combo"].setStyleSheet("color: red;")
                 r["audio_combo"].setToolTip("В папке нет аудио файлов — добавьте аудио дорожку")
                 r["audio_combo"].blockSignals(False)
+
+        # --- Статус "Чудовищная ошибка" — папка без каких-либо данных ---
+        if not has_audio and not has_archive:
+            # Проверить торрент-файлы и ссылку
+            _has_tor_files = False
+            try:
+                _has_tor_files = any(f.lower().endswith('.torrent') for f in os.listdir(r["folder_path"]) if os.path.isfile(os.path.join(r["folder_path"], f)))
+            except OSError:
+                pass
+            _has_tor_url = bool(r.get("audio_torrent_url", ""))
+            if not _has_tor_files and not _has_tor_url:
+                r["status_lbl"].setText("Чудовищная ошибка"); r["status_lbl"].setStyleSheet("color:#cc0000; font-weight:bold; background-color:#ffe0e0;")
+                r["status_lbl"].setToolTip(self._STATUS_TOOLTIPS.get("Чудовищная ошибка", ""))
+                self._set_row_bg(r, "#ffe0e0"); r["sort_priority"] = 1
 
         # Кнопки действий — скрывать если нечего делать, показывать размер файла
         _pending = self._count_pending_outputs(r)
@@ -3791,6 +4036,18 @@ class MKVMergeApp(QMainWindow):
             r["btn_play"].setToolTip("Запустить mkvmerge для этой записи")
         else:
             r["btn_play"].setVisible(False)
+        # btn_download — видна когда нет аудио, нет архива, но есть торрент-файлы или ссылка
+        # _has_tor_files и _has_tor_url вычисляются в секции "Чудовищная ошибка" выше
+        if not has_audio and not has_archive and (_has_tor_files or _has_tor_url):
+            r["btn_download"].setVisible(True)
+            _dl_parts = []
+            if _has_tor_files:
+                _dl_parts.append("торрент-файл")
+            if _has_tor_url:
+                _dl_parts.append("ссылка")
+            r["btn_download"].setToolTip(f"Скачать аудио дорожку\nДоступно: {', '.join(_dl_parts)}")
+        else:
+            r["btn_download"].setVisible(False)
         r["btn_unrar"].setVisible(has_archive)
         r["btn_del_archive"].setVisible(has_archive)
         if has_archive:
@@ -3856,6 +4113,8 @@ class MKVMergeApp(QMainWindow):
         if self._highlighted_row is r:
             self._set_row_bg(r, COLOR_HIGHLIGHT, _is_highlight=True)
         self._schedule_batch_update()
+        # Обновить счётчики на кнопках фильтрации по статусу
+        self._update_status_filter_counts()
 
     def _fit_columns_to_content(self):
         """Подогнать ширину колонок под контент, включая текст внутри QLineEdit.
@@ -3951,6 +4210,9 @@ class MKVMergeApp(QMainWindow):
                 ib.setStyleSheet(f"color:orange;font-weight:bold;background:{color};")
             else:
                 ib.setStyleSheet(f"color:#006600;font-weight:bold;background:{color};")
+            # Восстановить рамку если это активная TXT кнопка
+            if self._active_txt_fn == r.get("folder_name") and ib is self._active_txt_btn:
+                ib.setStyleSheet(ib.styleSheet() + " border: 2px solid #0078d4;")
         # Восстановить фон delay_lbl (цвет значка через rich text)
         dl = r.get("delay_lbl")
         if dl:
@@ -3958,6 +4220,7 @@ class MKVMergeApp(QMainWindow):
 
     _SP_VISUAL = {
         6:  ("Видео в процессе", "#8e44ad", COLOR_VIDEO_PENDING),
+        5:  ("Неверный пароль",  "red",     COLOR_ERROR),
         -1: ("В тесте",          "#b37400", COLOR_IN_TEST),
         0:  ("К обработке",      "blue",    COLOR_TO_PROCESS),
         4:  ("Готово",           "green",   COLOR_READY),
@@ -3979,6 +4242,18 @@ class MKVMergeApp(QMainWindow):
         "Ожидает аудио":    "Видео файл найден, но аудио дорожка не выбрана.\nРаспакуйте архив или добавьте аудио файл в папку.",
         "Нет файлов":       "Аудио и видео файлы не выбраны.\nДобавьте файлы в папку.",
         "Ожидание":         "Группа статусов: не хватает данных для обработки.\nВключает: «Ожидает видео», «Ожидает аудио», «Нет файлов».\nСбрасывается автоматически при добавлении недостающих файлов.",
+        "Чудовищная ошибка":    "Нет аудио, нет архива, нет торрент-файлов, нет ссылок на торрент.\nЗачем была создана папка если нет никаких данных?\nДобавьте торрент-файл, ссылку или аудио дорожку.",
+        "Неверный пароль":  "Попытка распаковки архива не удалась — указан неверный пароль.\nСбрасывается ТОЛЬКО при успешной распаковке архива.\nВведите правильный пароль и нажмите кнопку «Архив» для повторной попытки.",
+        "Ошибка":
+            "Группа статусов: файл ВЫБРАН в селекте, но НЕ НАЙДЕН на диске.\n\n"
+            "Включает:\n"
+            "• «Нет аудио» — аудио файл выбран в комбобоксе,\n"
+            "   но не найден в папке аудио дорожек.\n\n"
+            "• «Нет видео» — видео файл выбран в комбобоксе,\n"
+            "   но не найден в основной папке видео.\n\n"
+            "Важно: если файл НЕ выбран (комбобокс пустой) —\n"
+            "это НЕ ошибка, а статус «Ожидание».\n"
+            "Ошибка = файл был, но пропал.",
     }
 
     def _apply_saved_status(self, r, saved):
@@ -3995,6 +4270,7 @@ class MKVMergeApp(QMainWindow):
             r["status_lbl"].setStyleSheet("")
         self._set_row_bg(r, bg or r["base_color"])
         r["btn_play"].setVisible(saved.get("_btn_play_vis", False))
+        r["btn_download"].setVisible(saved.get("_btn_download_vis", False))
         r["btn_unrar"].setVisible(saved.get("_btn_unrar_vis", False))
         r["btn_del_archive"].setVisible(saved.get("_btn_del_archive_vis", False))
         r["btn_to_res"].setVisible(saved.get("_btn_to_res_vis", False))
@@ -4034,7 +4310,8 @@ class MKVMergeApp(QMainWindow):
         r["btn_to_res"].setVisible(sp == -1)
         r["btn_del_test"].setVisible(sp == -1)
         r["btn_del_res"].setVisible(sp == 4)
-        # btn_unrar, btn_del_archive, btn_del_src — будут уточнены при deferred проверке
+        # btn_download, btn_unrar, btn_del_archive, btn_del_src — будут уточнены при deferred проверке
+        r["btn_download"].setVisible(False)
         r["btn_unrar"].setVisible(False)
         r["btn_del_archive"].setVisible(False)
         r["btn_del_src"].setVisible(False)
@@ -4183,6 +4460,13 @@ class MKVMergeApp(QMainWindow):
                     tab_audio.addItem("⚠ Нет аудио файлов", "")
                     tab_audio.setEnabled(False)
                 tab_audio.blockSignals(False)
+            # Обновить кнопку "Сканировать дорожки" на вкладке
+            _scan_btn = tw.get("scan_tracks_btn")
+            if _scan_btn and tab_audio:
+                _cur_a = tab_audio.currentData(Qt.UserRole) or ""
+                _a_ok = bool(_cur_a and not _cur_a.startswith("\u26A0") and
+                             os.path.isfile(os.path.join(fp, _cur_a)))
+                _scan_btn.setEnabled(_a_ok)
             # Обновить starter_combo и ender_combo на вкладке
             main_file = self._audio_filename(r)
             for tab_key in ("starter_combo", "ender_combo"):
@@ -4584,7 +4868,7 @@ class MKVMergeApp(QMainWindow):
         layout.setSpacing(8)
 
         # Создаём вкладки
-        tabs = QTabWidget()
+        tabs = QTabWidget(dlg)
 
         # === ВКЛАДКА 1: СТАТУСЫ ===
         tab_statuses = QWidget()
@@ -4624,12 +4908,24 @@ class MKVMergeApp(QMainWindow):
              "Означает что видео ещё скачивается или обрабатывается. "
              "Сбрасывается автоматически при выборе видео файла "
              "или вручную повторным нажатием ⏳."),
-            ("Ожидание", "gray", None,
-             "Группа статусов: не хватает данных для обработки. "
-             "Включает: «Ожидает видео» (аудио есть, видео не выбрано), "
-             "«Ожидает аудио» (видео есть, аудио нет), "
-             "«Нет файлов» (ни аудио ни видео). "
-             "Сбрасывается автоматически при добавлении недостающих файлов."),
+            ("Неверный пароль", "red", COLOR_ERROR,
+             "Попытка распаковки архива не удалась — указан неверный пароль. "
+             "Сбрасывается ТОЛЬКО при успешной распаковке архива. "
+             "Введите правильный пароль и нажмите кнопку «Архив» для повторной попытки."),
+            ("Ожидает видео", "#cc6600", "#f0f0f0",
+             "Аудио файл найден, но видео источник не выбран. "
+             "Выберите видео файл в колонке «Видео файл (источник)»."),
+            ("Ожидает аудио", "#cc6600", "#f0f0f0",
+             "Видео файл найден, но аудио дорожка не выбрана. "
+             "Распакуйте архив или добавьте аудио файл в папку."),
+            ("Нет файлов", "gray", "#f0f0f0",
+             "Аудио и видео файлы не выбраны. Добавьте файлы в папку."),
+            ("Чудовищная ошибка", "#cc0000", "#ffe0e0",
+             "Папка создана, но в ней нет НИЧЕГО: "
+             "нет аудио файлов, нет архива, нет торрент-файлов (.torrent), "
+             "нет ссылки на торрент аудио. "
+             "Зачем была создана папка если нет никаких данных? "
+             "Добавьте торрент-файл, ссылку на торрент или аудио дорожку."),
         ]
         for name, color, bg_color, desc in statuses:
             row_w = QWidget()
@@ -4914,9 +5210,12 @@ class MKVMergeApp(QMainWindow):
 
         howto_layout.addWidget(_howto_section(
             "1. Настроить пути",
-            "Вверху окна в блоке «Пути» указать 5 путей:\n"
+            "Вверху окна в блоке «Пути» указать 6 путей:\n"
             "- 🎵 Папка аудио (источник) — корневая папка, внутри которой будут подпапки "
             "для каждого фильма (каждая подпапка = одна аудио дорожка)\n"
+            "- 🎵 Папка куда скачиваются аудио дорожки — папка куда торрент-клиент "
+            "скачивает архивы с аудио. Нужна только если НЕ используется qBittorrent API. "
+            "Если API включён — торренты скачиваются прямо в папку фильма, и эта папка не используется\n"
             "- 📽️ Папка видео (источник) — папка с исходными видео файлами (MKV)\n"
             "- 📽️ Папка результата — куда перемещать готовые файлы после проверки\n"
             "- 📽️ Папка тест — куда сохраняются файлы после обработки для проверки\n"
@@ -4929,8 +5228,8 @@ class MKVMergeApp(QMainWindow):
             "В блоке «Настройки по умолчанию» задать:\n"
             "- Имя новой дорожки в файле — название аудио дорожки в MKV "
             "(например: ATMOS, AC3, DTS)\n"
-            "- Аффикс нового файла — текст, который добавится к имени готового файла: "
-            "«в начале» (префикс) и «в конце» (суффикс)\n"
+            "- Аффикс выходного файла — текст, который добавится к имени готового файла: "
+            "префикс и суффикс\n"
             "  Пример: суффикс «_ATMOS» → Фильм_ATMOS.mkv",
             "#f8f0ff"))
 
@@ -5023,6 +5322,92 @@ class MKVMergeApp(QMainWindow):
             "#f8fff0"))
 
         howto_layout.addStretch()
+
+        # === ВКЛАДКА: qBittorrent API ===
+        tab_qbt = QWidget()
+        tab_qbt_scroll = QScrollArea()
+        tab_qbt_scroll.setWidgetResizable(True)
+        tab_qbt_scroll.setWidget(tab_qbt)
+        qbt_layout = QVBoxLayout(tab_qbt)
+        qbt_layout.setSpacing(8)
+        qbt_layout.setContentsMargins(12, 12, 12, 12)
+
+        _qbt_ico_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+        _qbt_ico = f'<img src="{_qbt_ico_path}" width="20" height="20">' if os.path.isfile(_qbt_ico_path) else ""
+        qbt_header = QLabel(f'Скачивание аудио дорожек через {_qbt_ico} qBittorrent')
+        qbt_header.setTextFormat(Qt.RichText)
+        qbt_header.setFont(QFont("Arial", 12, QFont.Bold))
+        qbt_layout.addWidget(qbt_header)
+
+        def _qbt_section(title, text, bg="#f0f8ff"):
+            grp = QWidget()
+            gl = QVBoxLayout(grp)
+            gl.setContentsMargins(10, 8, 10, 8)
+            hdr = QLabel(f"<b>{title}</b>")
+            hdr.setStyleSheet("font-size:11pt;")
+            gl.addWidget(hdr)
+            body = QLabel(text)
+            body.setWordWrap(True)
+            body.setStyleSheet("padding-left:6px;")
+            gl.addWidget(body)
+            grp.setStyleSheet(f"background:{bg}; border-radius:4px;")
+            return grp
+
+        qbt_layout.addWidget(_qbt_section(
+            "Что это?",
+            "Кнопка «Скачать» в панели действий позволяет массово добавлять торренты "
+            "в qBittorrent для скачивания аудио дорожек.\n\n"
+            "Два источника данных:\n"
+            "• Торрент-файл (.torrent) — файл в папке фильма\n"
+            "• Ссылка на торрент — поле «Торрент аудио» в данных фильма\n\n"
+            "Кнопка доступна для записей без аудио и без архива, "
+            "у которых есть хотя бы один из источников."))
+
+        qbt_layout.addWidget(_qbt_section(
+            "Зачем нужен API?",
+            "Без API: торрент открывается через os.startfile() → qBittorrent показывает диалог "
+            "с папкой по умолчанию. Нужно ВРУЧНУЮ менять папку для каждого торрента.\n\n"
+            "С API: торрент добавляется СРАЗУ в нужную папку (папка фильма), "
+            "без диалогов и ручного выбора. Скачивание начинается мгновенно.",
+            bg="#e8ffe8"))
+
+        qbt_layout.addWidget(_qbt_section(
+            "Как включить API",
+            "1. Откройте qBittorrent\n"
+            "2. Меню: Инструменты → Настройки → Веб-интерфейс\n"
+            "3. Поставьте галку «Веб-интерфейс (удалённое управление)»\n"
+            "4. Порт: 8080 (по умолчанию)\n"
+            "5. Поставьте галку «Пропускать аутентификацию клиентов с localhost»\n"
+            "6. Задайте любой пароль (минимум 6 символов) — он нужен только для сохранения настроек\n"
+            "7. Нажмите «Применить» → «OK»",
+            bg="#fffff0"))
+
+        qbt_layout.addWidget(_qbt_section(
+            "Как работает скачивание",
+            "Если есть .torrent файл:\n"
+            "   Сразу добавляется в клиент, скачивание начнётся автоматически.\n\n"
+            "Если есть только ссылка:\n"
+            "   Скачиваем .torrent по ссылке → сохраняем в папку фильма →\n"
+            "   добавляем в клиент → скачивание начнётся автоматически.\n\n"
+            "Если установлен qBittorrent + включён веб-интерфейс:\n"
+            "   Скачивание в папку фильма.\n\n"
+            "Если другой клиент или веб-интерфейс не включён:\n"
+            "   Скачивание в общую папку торрент-клиента."))
+
+        qbt_layout.addWidget(_qbt_section(
+            "Настройки подключения",
+            "По умолчанию используется http://localhost:8080.\n"
+            "Для изменения добавьте в config_settings/settings.json:\n\n"
+            "  \"qbt_url\": \"http://localhost:8080\"\n"
+            "  \"qbt_user\": \"\"         (пустой если localhost без авторизации)\n"
+            "  \"qbt_password\": \"\"  (пустой если localhost без авторизации)",
+            bg="#f8f0ff"))
+
+        qbt_layout.addStretch()
+        _qbt_tab_idx = tabs.addTab(tab_qbt_scroll, "qBittorrent")
+        if os.path.isfile(_qbt_ico_path):
+            tabs.setTabIcon(_qbt_tab_idx, QIcon(_qbt_ico_path))
+
         tabs.insertTab(0, tab_howto_scroll, "Как пользоваться")
         tabs.setCurrentIndex(0)
 
@@ -5684,6 +6069,7 @@ class MKVMergeApp(QMainWindow):
             self.batch_preview_btns[btn_key].setChecked(True)
 
         lbl = self._batch_labels.get(btn_key, "действие")
+        self._update_rows_count()
         self.log(f"[PREVIEW] «{lbl}»: показано {len(targets)} записей. Повторный клик 👁 — сброс.")
 
     def _clear_batch_preview(self):
@@ -5705,25 +6091,65 @@ class MKVMergeApp(QMainWindow):
         self._preview_rows = []
         # Применить текущий фильтр поиска если есть
         self._apply_filter()
+        self._update_status_filter_counts()
         self.log("[PREVIEW] Фильтр сброшен — показаны все записи")
 
-    def _on_status_filter(self, priority):
-        """Фильтрация по статусу — показать только записи с данным sort_priority (или is_new для NEW)."""
-        key = f'_status_filter_{priority}'
-        # Если уже показан этот фильтр — сбросить
-        if getattr(self, '_active_preview_key', None) == key:
+    def _show_status_filter_settings(self):
+        """Показать меню с чекбоксами для настройки видимости кнопок фильтрации."""
+        menu = QMenu(self)
+        for key, btn in self._status_filter_btns.items():
+            label = btn.text().split(" (")[0]
+            action = menu.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(btn.isVisible())
+            action.toggled.connect(lambda vis, b=btn: self._toggle_filter_btn_vis(b, vis))
+        menu.exec(self._status_settings_btn.mapToGlobal(
+            QPoint(0, self._status_settings_btn.height())))
+
+    def _toggle_filter_btn_vis(self, btn, visible):
+        """Переключить видимость кнопки фильтрации и сохранить настройку."""
+        btn.setVisible(visible)
+        hidden = [k for k, b in self._status_filter_btns.items() if not b.isVisible()]
+        self.config["hidden_status_buttons"] = hidden
+        self.schedule_autosave()
+
+    def _match_custom_filter(self, r, fkey):
+        """Проверить запись на соответствие произвольному фильтру."""
+        if fkey == "no_audio_no_archive":
+            has_audio = self._has_main_audio(r)  # >= 1 ГБ
+            has_archive = bool(r.get("archive_file"))
+            return not has_audio and not has_archive
+        elif fkey == "no_forum_url":
+            fe = r.get("forum_entry")
+            return not fe or not fe.text().strip()
+        return False
+
+    def _filter_matches(self, r, key):
+        """Проверить соответствие записи фильтру по ключу."""
+        if key == "new":
+            return bool(r.get("is_new"))
+        elif key.startswith("text:"):
+            return r["status_lbl"].text() == key[5:]
+        elif key.startswith("sp:"):
+            return r.get("sort_priority", 1) == int(key[3:])
+        elif key.startswith("custom:"):
+            return self._match_custom_filter(r, key[7:])
+        return False
+
+    def _on_status_filter(self, filter_key):
+        """Единая фильтрация по статусу/группе/произвольному условию."""
+        self._update_status_filter_counts()
+        preview_key = f'_filter_{filter_key}'
+        if getattr(self, '_active_preview_key', None) == preview_key:
             self._clear_batch_preview()
             return
-        # Сбросить предыдущий preview
         self._clear_batch_preview()
-        if priority == "new":
-            targets = [r for r in self.rows if r.get("is_new")]
-        else:
-            targets = [r for r in self.rows if r.get("sort_priority", 1) == priority]
+        targets = [r for r in self.rows if self._filter_matches(r, filter_key)]
         if not targets:
-            self.log(f"[СТАТУС] Нет записей с этим статусом")
+            label = self._status_filter_btns[filter_key].text().split(" (")[0]
+            self.log(f"[ФИЛЬТР] Нет записей для «{label}»")
             return
-        self._active_preview_key = key
+        self._active_preview_key = preview_key
         self._preview_rows = targets
         target_set = set(id(r) for r in targets)
         for r in self.rows:
@@ -5732,28 +6158,45 @@ class MKVMergeApp(QMainWindow):
                 r["_preview_active"] = True
             else:
                 self.table.setRowHidden(r["row_index"], True)
-        # Установить checked на кнопке
-        btn = self._status_filter_btns.get(priority)
+        btn = self._status_filter_btns.get(filter_key)
         if btn:
             btn.setChecked(True)
-        sp_label = "NEW" if priority == "new" else (self._SP_VISUAL.get(priority, ("",))[0] or f"priority={priority}")
-        self.log(f"[СТАТУС] «{sp_label}»: показано {len(targets)} записей. Повторный клик — сброс.")
+        label = btn.text().split(" (")[0] if btn else filter_key
+        self._update_rows_count()
+        self.log(f"[ФИЛЬТР] «{label}»: показано {len(targets)} записей. Повторный клик — сброс.")
 
     def _update_status_filter_counts(self):
-        """Обновить счётчики на кнопках фильтрации по статусу."""
-        counts = {}
+        """Обновить счётчики на кнопках фильтрации."""
+        # Подсчитать всё за один проход
+        text_counts = {}
+        sp_counts = {}
         new_count = 0
+        custom_counts = {"no_audio_no_archive": 0, "no_forum_url": 0}
         for r in self.rows:
             sp = r.get("sort_priority", 1)
-            counts[sp] = counts.get(sp, 0) + 1
+            sp_counts[sp] = sp_counts.get(sp, 0) + 1
+            text = r["status_lbl"].text()
+            text_counts[text] = text_counts.get(text, 0) + 1
             if r.get("is_new"):
                 new_count += 1
-        _labels = {-1: "В тесте", 0: "К обработке", 4: "Готово", 3: "Ошибка",
-                    1: "Ожидание", 6: "Видео в процессе", "new": "NEW"}
-        for sp, btn in self._status_filter_btns.items():
-            c = new_count if sp == "new" else counts.get(sp, 0)
-            lbl = _labels.get(sp, str(sp))
-            btn.setText(f"{lbl} ({c})")
+            if self._match_custom_filter(r, "no_audio_no_archive"):
+                custom_counts["no_audio_no_archive"] += 1
+            if self._match_custom_filter(r, "no_forum_url"):
+                custom_counts["no_forum_url"] += 1
+        for key, btn in self._status_filter_btns.items():
+            label = btn.text().split(" (")[0]
+            if key == "new":
+                c = new_count
+            elif key.startswith("text:"):
+                c = text_counts.get(key[5:], 0)
+            elif key.startswith("sp:"):
+                c = sp_counts.get(int(key[3:]), 0)
+            elif key.startswith("custom:"):
+                c = custom_counts.get(key[7:], 0)
+            else:
+                c = 0
+            btn.setText(f"{label} ({c})")
+            btn.setEnabled(c > 0)
 
     def _show_new_preview(self):
         """Показать только NEW записи. Повторный клик — сброс."""
@@ -5833,6 +6276,11 @@ class MKVMergeApp(QMainWindow):
             # Для остальных действий — простой диалог
             ans = QMessageBox.question(self, lbl,
                 f"{lbl} — выполнить для {n} файлов?")
+        if btn_key == "btn_download":
+            # Для скачивания — собственный диалог вместо стандартного подтверждения
+            self._batch_download_dialog(targets)
+            self._update_batch_buttons()
+            return
         if ans != QMessageBox.Yes:
             return
         # Обработка: используем специализированные батч-методы
@@ -5970,6 +6418,592 @@ class MKVMergeApp(QMainWindow):
         self.log(f"[BATCH] Удалено архивов: {deleted}/{len(targets)}")
         self._check_all_statuses()
         self._update_archive_btn_count()
+
+    def _action_download(self, fn):
+        """Скачать аудио дорожку для одного фильма."""
+        r = self._find_row(fn) if isinstance(fn, str) else fn
+        if not r:
+            return
+        self._batch_download_dialog([r])
+
+    def _batch_download_dialog(self, targets):
+        """Модальное окно для скачивания аудио дорожек."""
+        # Подсчёт данных
+        # Собираем данные для КАЖДОЙ записи: и торрент-файлы, и URL
+        _dl_data = []  # [(r, tor_files_list, url_str), ...]
+        _cnt_tor = 0
+        _cnt_url = 0
+        _cnt_none = 0
+        for r in targets:
+            fp = r["folder_path"]
+            _tor_files = []
+            try:
+                _tor_files = [f for f in os.listdir(fp) if f.lower().endswith('.torrent') and os.path.isfile(os.path.join(fp, f))]
+            except OSError:
+                pass
+            _url = r.get("audio_torrent_url", "").strip()
+            _dl_data.append((r, _tor_files, _url))
+            if _tor_files:
+                _cnt_tor += 1
+            if _url:
+                _cnt_url += 1
+            if not _tor_files and not _url:
+                _cnt_none += 1
+
+        # Считаем только по ссылке (без файла)
+        _cnt_url_only = sum(1 for _, tf, u in _dl_data if not tf and u)
+
+        if _cnt_tor == 0 and _cnt_url == 0:
+            QMessageBox.information(self, "Скачать", "Нет данных для скачивания.\nНет торрент-файлов и нет ссылок на торрент.")
+            return
+
+        # Проверить доступность qBittorrent API
+        _qbt_available = self._qbt_check_available()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Скачать аудио дорожки")
+        dlg.setMinimumWidth(420)
+        lay = QVBoxLayout(dlg)
+
+        # Статистика
+        _info_lines = [f"Выбрано записей: {len(targets)}"]
+        if _cnt_tor:
+            _info_lines.append(f"С торрент-файлами: {_cnt_tor}")
+        if _cnt_url_only:
+            _info_lines.append(f"Только ссылки (нет файла): {_cnt_url_only} (скачается .torrent → API)")
+        if _cnt_none:
+            _info_lines.append(f"Без данных: {_cnt_none} (пропускаются)")
+        info = QLabel("\n".join(_info_lines))
+        info.setStyleSheet("padding: 8px;")
+        lay.addWidget(info)
+
+        # Описание логики (HTML для вставки иконки qBittorrent)
+        _qbt_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "qbittorrent_icon.png")
+        _qbt_img = f'<img src="{_qbt_icon}" width="16" height="16">' if os.path.isfile(_qbt_icon) else ""
+        logic_lbl = QLabel(
+            "Если есть .torrent файл:<br>"
+            "&nbsp;&nbsp;&nbsp;Сразу добавляется в клиент, скачивание начнётся автоматически.<br><br>"
+            "Если есть только ссылка:<br>"
+            "&nbsp;&nbsp;&nbsp;Скачиваем .torrent по ссылке → сохраняем в папку фильма →<br>"
+            "&nbsp;&nbsp;&nbsp;добавляем в клиент → скачивание начнётся автоматически.<br><br>"
+            f"Если установлен {_qbt_img} qBittorrent + включён веб-интерфейс:<br>"
+            "&nbsp;&nbsp;&nbsp;Скачивание в папку фильма.<br><br>"
+            "Если другой клиент или веб-интерфейс не включён:<br>"
+            "&nbsp;&nbsp;&nbsp;Скачивание в общую папку торрент-клиента.")
+        logic_lbl.setTextFormat(Qt.RichText)
+        logic_lbl.setWordWrap(True)
+        logic_lbl.setStyleSheet("color: #555; padding: 4px 8px;")
+        lay.addWidget(logic_lbl)
+
+        # qBittorrent API статус
+        if _qbt_available:
+            qbt_lbl = QLabel("✅ qBittorrent API доступен — торренты скачаются в папку фильма")
+            qbt_lbl.setStyleSheet("color: green; padding: 4px 8px; font-weight: bold;")
+            qbt_lbl.setToolTip("qBittorrent WebUI включён, порт 8080.\n"
+                               "Торренты будут добавлены через API с savepath = папка фильма.")
+        else:
+            qbt_lbl = QLabel("❌ qBittorrent API не доступен — торренты скачаются в папку по умолчанию торрент-клиента")
+            qbt_lbl.setStyleSheet("color: red; padding: 4px 8px; font-weight: bold;")
+            qbt_lbl.setWordWrap(True)
+            qbt_lbl.setToolTip("Чтобы включить qBittorrent API:\n"
+                               "1. Откройте qBittorrent → Инструменты → Настройки → Веб-интерфейс\n"
+                               "2. ☑ «Веб-интерфейс (удалённое управление)», порт 8080\n"
+                               "3. ☑ «Пропускать аутентификацию клиентов с localhost»\n"
+                               "4. Задайте пароль (мин. 6 символов) → Применить")
+        lay.addWidget(qbt_lbl)
+
+        # Галка "Перезаписать существующие"
+        overwrite_cb = QCheckBox("Перезаписать существующие (удалить старый торрент + файлы и добавить заново)")
+        overwrite_cb.setToolTip(
+            "Если торрент уже добавлен в qBittorrent — удалить его\n"
+            "вместе со скачанными файлами и добавить заново\n"
+            "с правильной папкой сохранения.\n\n"
+            "Полезно если торрент был скачан ранее в другую папку.")
+        overwrite_cb.setEnabled(_qbt_available)
+        if not _qbt_available:
+            overwrite_cb.setToolTip("Требуется qBittorrent API для перезаписи")
+        lay.addWidget(overwrite_cb)
+
+        # Кнопки
+        btn_lay = QHBoxLayout()
+        btn_lay.addStretch()
+        dl_btn = QPushButton("Скачать")
+        dl_btn.setStyleSheet("QPushButton{background-color:#cce5ff; padding: 6px 20px;} QPushButton:hover{background-color:#99ccff;}")
+        dl_btn.setToolTip("Начать скачивание аудио дорожек")
+        cancel_btn = QPushButton("Отмена")
+        cancel_btn.setToolTip("Отмена скачивания")
+        btn_lay.addWidget(dl_btn)
+        btn_lay.addWidget(cancel_btn)
+        lay.addLayout(btn_lay)
+
+        cancel_btn.clicked.connect(dlg.reject)
+
+        def _do_download():
+            dlg.accept()
+            self._execute_download(_dl_data, _qbt_available, overwrite_cb.isChecked())
+
+        dl_btn.clicked.connect(_do_download)
+        dlg.exec()
+
+    def _execute_download(self, dl_data, use_qbt, overwrite=False):
+        """Выполнить скачивание торрент-файлов и/или ссылок.
+        dl_data: [(r, tor_files_list, url_str), ...]
+        Приоритет: торрент-файл → ссылка (если файла нет).
+        overwrite: при ошибке "Fails." удалить старый торрент + файлы и добавить заново.
+        """
+        downloaded = 0
+        url_added = 0
+        skipped = 0
+        overwritten = 0
+        errors = []
+
+        for r, tor_files, url in dl_data:
+            fn = r["folder_name"]
+            fp = r["folder_path"]
+            done = False
+
+            # Торрент-файл (приоритет)
+            if tor_files:
+                tor_path = os.path.join(fp, tor_files[0])
+                if use_qbt:
+                    ok, err = self._qbt_add_torrent(tor_path, fp)
+                    if ok:
+                        self.log(f"[DOWNLOAD] qBittorrent API: файл «{tor_files[0]}» → «{fp}»")
+                        downloaded += 1; done = True
+                    elif overwrite and "fails" in err.lower():
+                        # Торрент уже существует — удаляем и добавляем заново
+                        _hash = self._torrent_info_hash(tor_path)
+                        if _hash:
+                            del_ok, del_err = self._qbt_delete_torrent(_hash, delete_files=True)
+                            if del_ok:
+                                self.log(f"[OVERWRITE] Удалён старый торрент {_hash[:8]}… для «{fn}»")
+                                import time as _time; _time.sleep(1)  # подождать удаления
+                                ok2, err2 = self._qbt_add_torrent(tor_path, fp)
+                                if ok2:
+                                    self.log(f"[DOWNLOAD] qBittorrent API (перезапись): «{tor_files[0]}» → «{fp}»")
+                                    downloaded += 1; overwritten += 1; done = True
+                                else:
+                                    errors.append(f"{fn}: перезапись не удалась — {err2}")
+                                    self.log(f"[ERR] «{fn}»: повторное добавление — {err2}")
+                            else:
+                                errors.append(f"{fn}: не удалось удалить старый — {del_err}")
+                                self.log(f"[ERR] «{fn}»: удаление торрента — {del_err}")
+                        else:
+                            errors.append(f"{fn}: не удалось прочитать info_hash из .torrent")
+                            self.log(f"[ERR] «{fn}»: info_hash не вычислен")
+                    else:
+                        errors.append(f"{fn}: API ошибка — {err}")
+                        self.log(f"[ERR] «{fn}»: qBittorrent API — {err}")
+                else:
+                    try:
+                        os.startfile(tor_path)
+                        downloaded += 1; done = True
+                        self.log(f"[DOWNLOAD] os.startfile: «{tor_files[0]}» (⚠ папка по умолчанию)")
+                    except Exception as e:
+                        errors.append(f"{fn}: {e}")
+                        self.log(f"[ERR] «{fn}»: os.startfile — {e}")
+
+            # Ссылка — если торрент-файл не обработан
+            if not done and url:
+                if url.startswith('magnet:') and use_qbt:
+                    # Magnet-ссылки — напрямую через API
+                    ok, err = self._qbt_add_torrent_url(url, fp)
+                    if ok:
+                        self.log(f"[DOWNLOAD] qBittorrent API: magnet → «{fp}»")
+                        url_added += 1; done = True
+                    else:
+                        errors.append(f"{fn}: API magnet — {err}")
+                        self.log(f"[ERR] «{fn}»: magnet — {err}")
+                if not done:
+                    # Скачать .torrent файл через Python в папку фильма, потом добавить через API
+                    _dl_ok, _dl_path, _dl_err = self._download_torrent_file(url, fp)
+                    if _dl_ok and _dl_path:
+                        self.log(f"[DOWNLOAD] Скачан .torrent: «{os.path.basename(_dl_path)}» → «{fp}»")
+                        if use_qbt:
+                            ok, err = self._qbt_add_torrent(_dl_path, fp)
+                            if ok:
+                                self.log(f"[DOWNLOAD] qBittorrent API: файл «{os.path.basename(_dl_path)}» → «{fp}»")
+                                url_added += 1; done = True
+                            else:
+                                # .torrent скачан но API не добавил — открываем через os.startfile
+                                try:
+                                    os.startfile(_dl_path)
+                                    url_added += 1; done = True
+                                    self.log(f"[DOWNLOAD] os.startfile: «{os.path.basename(_dl_path)}»")
+                                except Exception as e2:
+                                    errors.append(f"{fn}: API — {err}, startfile — {e2}")
+                        else:
+                            try:
+                                os.startfile(_dl_path)
+                                url_added += 1; done = True
+                                self.log(f"[DOWNLOAD] os.startfile: «{os.path.basename(_dl_path)}»")
+                            except Exception as e:
+                                errors.append(f"{fn}: {e}")
+                    else:
+                        # Не удалось через Python (авторизация) — браузер + мониторинг загрузок
+                        self.log(f"[WARN] «{fn}»: Python не смог — {_dl_err}, пробуем браузер")
+                        _br_ok, _br_path = self._download_via_browser_and_wait(url, fp, fn)
+                        if _br_ok and _br_path:
+                            if use_qbt:
+                                ok2, err2 = self._qbt_add_torrent(_br_path, fp)
+                                if ok2:
+                                    self.log(f"[DOWNLOAD] qBittorrent API: «{os.path.basename(_br_path)}» → «{fp}»")
+                                    url_added += 1; done = True
+                                else:
+                                    try:
+                                        os.startfile(_br_path)
+                                        url_added += 1; done = True
+                                        self.log(f"[DOWNLOAD] os.startfile: «{os.path.basename(_br_path)}»")
+                                    except Exception as e2:
+                                        errors.append(f"{fn}: API — {err2}")
+                            else:
+                                try:
+                                    os.startfile(_br_path)
+                                    url_added += 1; done = True
+                                except Exception as e:
+                                    errors.append(f"{fn}: {e}")
+                        elif _br_ok is None:
+                            # Пользователь отменил ожидание
+                            self.log(f"[SKIP] «{fn}»: ожидание отменено")
+                            skipped += 1
+                        else:
+                            errors.append(f"{fn}: .torrent не появился в папке загрузок")
+                            self.log(f"[ERR] «{fn}»: .torrent не найден после скачивания браузером")
+
+            if not done:
+                if not tor_files and not url:
+                    self.log(f"[SKIP] «{fn}»: нет ни торрент-файлов ни ссылок")
+                skipped += 1
+
+        # Итого
+        parts = []
+        if downloaded:
+            parts.append(f"торрентов: {downloaded}")
+        if overwritten:
+            parts.append(f"перезаписано: {overwritten}")
+        if url_added:
+            parts.append(f"ссылок: {url_added}")
+        if skipped:
+            parts.append(f"пропущено: {skipped}")
+        if errors:
+            parts.append(f"ошибок: {len(errors)}")
+        summary = ", ".join(parts) if parts else "ничего не обработано"
+        self.log(f"[BATCH DOWNLOAD] Итого: {summary}")
+        if errors:
+            self.log(f"[BATCH DOWNLOAD] Ошибки:\n" + "\n".join(errors[:10]))
+        self.statusBar().showMessage(f"Скачивание: {summary}", 8000)
+
+    def _qbt_check_available(self):
+        """Проверить доступность qBittorrent WebUI."""
+        try:
+            import urllib.request
+            _settings = {}
+            try:
+                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                if os.path.isfile(_sp):
+                    with open(_sp, "r", encoding="utf-8") as f:
+                        _settings = __import__("json").load(f)
+            except Exception:
+                pass
+            _url = _settings.get("qbt_url", "http://localhost:8080")
+            req = urllib.request.Request(f"{_url}/api/v2/app/version", method="GET")
+            resp = urllib.request.urlopen(req, timeout=2)
+            return resp.status == 200
+        except Exception:
+            return False
+
+    def _qbt_add_torrent(self, torrent_path, save_path):
+        """Добавить торрент через qBittorrent WebUI API. Возвращает (ok, error_msg)."""
+        try:
+            import urllib.request
+            import json as _json
+            _settings = {}
+            try:
+                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                if os.path.isfile(_sp):
+                    with open(_sp, "r", encoding="utf-8") as f:
+                        _settings = _json.load(f)
+            except Exception:
+                pass
+            _url = _settings.get("qbt_url", "http://localhost:8080")
+            _user = _settings.get("qbt_user", "")
+            _pwd = _settings.get("qbt_password", "")
+
+            # Авторизация (если нужна)
+            _cookie = ""
+            if _user:
+                _auth_data = f"username={_user}&password={_pwd}".encode()
+                _auth_req = urllib.request.Request(f"{_url}/api/v2/auth/login", data=_auth_data, method="POST")
+                _auth_resp = urllib.request.urlopen(_auth_req, timeout=5)
+                _cookie = _auth_resp.getheader("Set-Cookie", "")
+
+            # Отправка торрент-файла (multipart/form-data)
+            boundary = "----PythonBoundary" + str(int(__import__("time").time() * 1000))
+            body = b""
+            # Файл торрента
+            with open(torrent_path, "rb") as f:
+                _tor_data = f.read()
+            body += f"--{boundary}\r\n".encode()
+            body += f"Content-Disposition: form-data; name=\"torrents\"; filename=\"{os.path.basename(torrent_path)}\"\r\n".encode()
+            body += b"Content-Type: application/x-bittorrent\r\n\r\n"
+            body += _tor_data
+            body += b"\r\n"
+            # Папка сохранения
+            body += f"--{boundary}\r\n".encode()
+            body += b"Content-Disposition: form-data; name=\"savepath\"\r\n\r\n"
+            body += save_path.encode("utf-8")
+            body += b"\r\n"
+            body += f"--{boundary}--\r\n".encode()
+
+            req = urllib.request.Request(f"{_url}/api/v2/torrents/add", data=body, method="POST")
+            req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+            if _cookie:
+                req.add_header("Cookie", _cookie)
+            resp = urllib.request.urlopen(req, timeout=10)
+            _body = resp.read().decode("utf-8", errors="replace").strip()
+            if resp.status == 200 and _body.lower().startswith("ok"):
+                return (True, "")
+            return (False, f"Ответ API: {_body} (HTTP {resp.status})")
+        except Exception as e:
+            return (False, str(e))
+
+    def _download_via_browser_and_wait(self, url, film_folder, film_name):
+        """Открыть ссылку в браузере, подождать скачивания .torrent, переместить в папку фильма.
+        Возвращает (ok, path) — ok=True+path, ok=False (не нашли), ok=None (отмена).
+        """
+        import webbrowser
+        import time as _time
+        import shutil
+
+        # Определяем папку загрузок
+        _dl_dir = os.path.expanduser("~/Downloads")
+        if not os.path.isdir(_dl_dir):
+            _dl_dir = os.path.join(os.environ.get("USERPROFILE", ""), "Downloads")
+        if not os.path.isdir(_dl_dir):
+            self.log(f"[ERR] Папка загрузок не найдена: {_dl_dir}")
+            return (False, "")
+
+        # Запоминаем существующие .torrent файлы
+        _before = set()
+        try:
+            _before = {f for f in os.listdir(_dl_dir) if f.lower().endswith('.torrent')}
+        except OSError:
+            pass
+
+        # Открываем в браузере
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            self.log(f"[ERR] webbrowser.open: {e}")
+            return (False, "")
+
+        # Показываем прогресс-диалог и ждём появления нового .torrent файла
+        progress = QProgressDialog(
+            f"Ожидание скачивания .torrent для «{film_name}»...\n"
+            f"Браузер открыл ссылку, ждём файл в {_dl_dir}",
+            "Отмена", 0, 30, self)
+        progress.setWindowTitle("Скачивание .torrent")
+        progress.setMinimumWidth(450)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+
+        _new_file = ""
+        for i in range(30):  # 30 секунд максимум
+            QApplication.processEvents()
+            if progress.wasCanceled():
+                return (None, "")
+            _time.sleep(1)
+            progress.setValue(i + 1)
+            QApplication.processEvents()
+            # Проверяем новые .torrent файлы
+            try:
+                _after = {f for f in os.listdir(_dl_dir) if f.lower().endswith('.torrent')}
+            except OSError:
+                continue
+            _new = _after - _before
+            if _new:
+                # Берём самый свежий
+                _new_file = max(_new, key=lambda f: os.path.getmtime(os.path.join(_dl_dir, f)))
+                break
+
+        progress.close()
+
+        if not _new_file:
+            return (False, "")
+
+        # Перемещаем в папку фильма
+        _src = os.path.join(_dl_dir, _new_file)
+        _dst = os.path.join(film_folder, _new_file)
+        try:
+            shutil.move(_src, _dst)
+            self.log(f"[DOWNLOAD] .torrent перемещён: {_dl_dir} → {film_folder}")
+            return (True, _dst)
+        except Exception as e:
+            self.log(f"[ERR] Не удалось переместить .torrent: {e}")
+            # Если не удалось переместить — используем файл где он есть
+            return (True, _src)
+
+    def _download_torrent_file(self, url, save_dir):
+        """Скачать .torrent файл по URL в папку save_dir. Возвращает (ok, path, error)."""
+        try:
+            import urllib.request
+            req = urllib.request.Request(url)
+            req.add_header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+            resp = urllib.request.urlopen(req, timeout=15)
+            data = resp.read()
+            if len(data) < 50:
+                return (False, "", f"Слишком маленький ответ ({len(data)} байт), возможно ошибка авторизации")
+            # Проверяем что это bencode (торрент-файл начинается с 'd')
+            if not data[:1] == b'd':
+                # Может быть HTML (страница авторизации)
+                _snippet = data[:200].decode("utf-8", errors="replace")
+                if "<html" in _snippet.lower() or "<head" in _snippet.lower():
+                    return (False, "", f"Сервер вернул HTML вместо .torrent (нужна авторизация?)")
+                # Может быть другой формат — всё равно сохраняем
+            # Имя файла из Content-Disposition или из URL
+            _cd = resp.getheader("Content-Disposition", "")
+            _fname = ""
+            if "filename=" in _cd:
+                _fname = _cd.split("filename=")[-1].strip().strip('"').strip("'")
+            if not _fname:
+                _fname = os.path.basename(url.split("?")[0])
+            if not _fname or not _fname.lower().endswith('.torrent'):
+                _fname = f"audio_{int(__import__('time').time())}.torrent"
+            # Убираем запрещённые символы
+            for c in r'\/:*?"<>|':
+                _fname = _fname.replace(c, "_")
+            _save_path = os.path.join(save_dir, _fname)
+            with open(_save_path, "wb") as f:
+                f.write(data)
+            return (True, _save_path, "")
+        except Exception as e:
+            return (False, "", str(e))
+
+    def _qbt_add_torrent_url(self, torrent_url, save_path):
+        """Добавить торрент по URL/magnet через qBittorrent WebUI API. Возвращает (ok, error_msg)."""
+        try:
+            import urllib.request
+            import json as _json
+            _settings = {}
+            try:
+                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                if os.path.isfile(_sp):
+                    with open(_sp, "r", encoding="utf-8") as f:
+                        _settings = _json.load(f)
+            except Exception:
+                pass
+            _url = _settings.get("qbt_url", "http://localhost:8080")
+
+            # multipart/form-data с urls и savepath
+            boundary = "----PythonBoundary" + str(int(__import__("time").time() * 1000))
+            body = b""
+            # URL торрента
+            body += f"--{boundary}\r\n".encode()
+            body += b"Content-Disposition: form-data; name=\"urls\"\r\n\r\n"
+            body += torrent_url.encode("utf-8")
+            body += b"\r\n"
+            # Папка сохранения
+            body += f"--{boundary}\r\n".encode()
+            body += b"Content-Disposition: form-data; name=\"savepath\"\r\n\r\n"
+            body += save_path.encode("utf-8")
+            body += b"\r\n"
+            body += f"--{boundary}--\r\n".encode()
+
+            req = urllib.request.Request(f"{_url}/api/v2/torrents/add", data=body, method="POST")
+            req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+            resp = urllib.request.urlopen(req, timeout=10)
+            _body = resp.read().decode("utf-8", errors="replace").strip()
+            if resp.status == 200 and _body.lower().startswith("ok"):
+                return (True, "")
+            return (False, f"Ответ API: {_body} (HTTP {resp.status})")
+        except Exception as e:
+            return (False, str(e))
+
+    @staticmethod
+    def _torrent_info_hash(torrent_path):
+        """Вычислить info_hash из .torrent файла (SHA1 от bencode info dict)."""
+        import hashlib
+        try:
+            with open(torrent_path, 'rb') as f:
+                data = f.read()
+        except OSError:
+            return None
+        if not data or data[0:1] != b'd':
+            return None
+
+        def _skip(d, i):
+            """Пропустить одно bencode-значение, вернуть индекс после него."""
+            ch = d[i:i + 1]
+            if ch == b'd':
+                i += 1
+                while d[i:i + 1] != b'e':
+                    i = _skip(d, i)  # key
+                    i = _skip(d, i)  # value
+                return i + 1
+            elif ch == b'l':
+                i += 1
+                while d[i:i + 1] != b'e':
+                    i = _skip(d, i)
+                return i + 1
+            elif ch == b'i':
+                return d.index(b'e', i) + 1
+            else:
+                colon = d.index(b':', i)
+                length = int(d[i:colon])
+                return colon + 1 + length
+
+        # Парсим top-level dict, ищем ключ b'info'
+        i = 1  # после 'd'
+        try:
+            while data[i:i + 1] != b'e':
+                # Читаем ключ (строка)
+                colon = data.index(b':', i)
+                klen = int(data[i:colon])
+                key = data[colon + 1:colon + 1 + klen]
+                i = colon + 1 + klen
+                # Позиция значения
+                val_start = i
+                i = _skip(data, i)
+                if key == b'info':
+                    return hashlib.sha1(data[val_start:i]).hexdigest()
+        except (ValueError, IndexError):
+            pass
+        return None
+
+    def _qbt_delete_torrent(self, info_hash, delete_files=True):
+        """Удалить торрент из qBittorrent через API. Возвращает (ok, error_msg)."""
+        try:
+            import urllib.request
+            import json as _json
+            _settings = {}
+            try:
+                _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_settings", "settings.json")
+                if os.path.isfile(_sp):
+                    with open(_sp, "r", encoding="utf-8") as f:
+                        _settings = _json.load(f)
+            except Exception:
+                pass
+            _url = _settings.get("qbt_url", "http://localhost:8080")
+            _user = _settings.get("qbt_user", "")
+            _pwd = _settings.get("qbt_password", "")
+            _cookie = ""
+            if _user:
+                _auth_data = f"username={_user}&password={_pwd}".encode()
+                _auth_req = urllib.request.Request(f"{_url}/api/v2/auth/login", data=_auth_data, method="POST")
+                _auth_resp = urllib.request.urlopen(_auth_req, timeout=5)
+                _cookie = _auth_resp.getheader("Set-Cookie", "")
+            _del_files = "true" if delete_files else "false"
+            _data = f"hashes={info_hash}&deleteFiles={_del_files}".encode()
+            req = urllib.request.Request(f"{_url}/api/v2/torrents/delete", data=_data, method="POST")
+            req.add_header("Content-Type", "application/x-www-form-urlencoded")
+            if _cookie:
+                req.add_header("Cookie", _cookie)
+            resp = urllib.request.urlopen(req, timeout=10)
+            if resp.status == 200:
+                return (True, "")
+            return (False, f"HTTP {resp.status}")
+        except Exception as e:
+            return (False, str(e))
 
     # ──────────────────────────────────
     #  Обработчики
@@ -6815,12 +7849,63 @@ class MKVMergeApp(QMainWindow):
         webbrowser.open(url)
 
     def _open_forum_url(self, fn):
+        """Открыть ссылку на форум. Если ссылки нет — поиск по названию (как _search_russdub)."""
         r = self._find_row(fn)
         if not r: return
         url = r["forum_entry"].text().strip()
-        if not url: return
-        if not url.startswith("http"): url = "https://" + url
-        webbrowser.open(url)
+        if url:
+            if not url.startswith("http"): url = "https://" + url
+            webbrowser.open(url)
+        else:
+            self._search_russdub(fn)
+
+    def _open_or_search_kinopoisk(self, fn):
+        """Открыть ссылку на Кинопоиск. Если ссылки нет — поиск по названию и году."""
+        r = self._find_row(fn)
+        if not r: return
+        url = r.get("kinopoisk_url", "").strip()
+        if url:
+            if not url.startswith("http"): url = "https://" + url
+            webbrowser.open(url)
+        else:
+            self._search_kinopoisk(fn)
+
+    def _update_forum_open_btn(self, r):
+        """Обновить кнопку форума в таблице: → (есть URL) ↔ иконка russdub+лупа (нет URL)."""
+        btn = r.get("forum_open_btn")
+        if not btn: return
+        url = r.get("forum_entry")
+        has_url = bool(url and url.text().strip())
+        if has_url:
+            btn.setIcon(QIcon())
+            btn.setText("→")
+            btn.setToolTip("Открыть ссылку на форум в браузере")
+        else:
+            btn.setText("")
+            _icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "russdub_icon.png")
+            if os.path.isfile(_icon):
+                btn.setIcon(_make_kp_search_icon(_icon, 48, mag_scale=0.42))
+                btn.setIconSize(QSize(20, 20))
+            btn.setToolTip("Поиск на форуме russdub по названию\nЗапрос: «название + год + завершен»")
+
+    def _update_kp_btn_icon(self, r):
+        """Обновить кнопку КП в таблице: → (есть URL) ↔ иконка+лупа (нет URL)."""
+        btn = r.get("kp_btn")
+        if not btn: return
+        url = r.get("kinopoisk_url", "").strip()
+        if url:
+            # Есть ссылка — стрелка (как в форуме)
+            btn.setIcon(QIcon())
+            btn.setText("→")
+            btn.setToolTip("Открыть страницу на Кинопоиске")
+        else:
+            # Нет ссылки — иконка КП с лупой (поиск)
+            btn.setText("")
+            _icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", "kinopoisk_icon.png")
+            if os.path.isfile(_icon):
+                btn.setIcon(_make_kp_search_icon(_icon, 48, mag_scale=0.42))
+                btn.setIconSize(QSize(20, 20))
+            btn.setToolTip("Поиск на Кинопоиске по названию")
 
     def _open_kinopoisk_url(self, fn):
         r = self._find_row(fn)
@@ -6850,7 +7935,11 @@ class MKVMergeApp(QMainWindow):
         if not title:
             title = r.get("folder_name", "")
         if not title:
-            self._show_film_search_error(fn, "Нет названия и имени папки для поиска")
+            QMessageBox.warning(self, "Поиск на Кинопоиске",
+                                f"Не удалось выполнить поиск.\n\n"
+                                f"Поле «Название» пустое на вкладке «{fn}»\n"
+                                f"в блоке «Данные о фильме».\n\n"
+                                f"Заполните название и нажмите поиск ещё раз.")
             return
         query = f"{title} ({year})" if year else title
         url = f"https://www.kinopoisk.ru/index.php?kp_query={urllib.parse.quote(query)}"
@@ -6863,7 +7952,11 @@ class MKVMergeApp(QMainWindow):
         title = r["title_entry"].text().strip()
         year = r["year_entry"].text().strip()
         if not title:
-            self._show_film_search_error(fn, "Введите название фильма для поиска")
+            QMessageBox.warning(self, "Поиск на RuTracker",
+                                f"Не удалось выполнить поиск.\n\n"
+                                f"Поле «Название» пустое на вкладке «{fn}»\n"
+                                f"в блоке «Данные о фильме».\n\n"
+                                f"Заполните название и нажмите поиск ещё раз.")
             return
         query = f"{title} ({year})" if year else title
         url = f"https://rutracker.org/forum/tracker.php?nm={urllib.parse.quote(query)}&o=7&s=2"
@@ -6875,7 +7968,11 @@ class MKVMergeApp(QMainWindow):
         if not r: return
         title = r["title_entry"].text().strip()
         if not title:
-            self._show_film_search_error(fn, "Введите название фильма для поиска")
+            QMessageBox.warning(self, "Поиск на RussDub",
+                                f"Не удалось выполнить поиск.\n\n"
+                                f"Поле «Название» пустое на вкладке «{fn}»\n"
+                                f"в блоке «Данные о фильме».\n\n"
+                                f"Заполните название и нажмите поиск ещё раз.")
             return
         year = r["year_entry"].text().strip()
         q = f"{title} {year} завершен" if year else f"{title} завершен"
@@ -6989,7 +8086,7 @@ class MKVMergeApp(QMainWindow):
         old_bk_layout.addWidget(info_lbl)
 
         # Горизонтальные вкладки: каждый бэкап = вкладка с датой
-        sub_tabs = QTabWidget()
+        sub_tabs = QTabWidget(old_bk_widget)
         sub_tabs.setToolTip("Каждая вкладка — один старый бэкап с датой создания")
         old_bk_layout.addWidget(sub_tabs)
 
@@ -7155,9 +8252,42 @@ class MKVMergeApp(QMainWindow):
         elif op and os.path.isdir(op):
             os.startfile(op)
 
+    def _open_output_dir_for_file(self, file_name, output_path, test_path):
+        """Открыть папку содержащую конкретный выходной файл (для extra videos).
+        Приоритет: результат → тест → тест (папка) → результат (папка)."""
+        if file_name:
+            if output_path and os.path.isfile(os.path.join(output_path, file_name)):
+                os.startfile(output_path); return
+            if test_path and os.path.isfile(os.path.join(test_path, file_name)):
+                os.startfile(test_path); return
+        if test_path and os.path.isdir(test_path):
+            os.startfile(test_path)
+        elif output_path and os.path.isdir(output_path):
+            os.startfile(output_path)
+
     # ──────────────────────────────────
     #  Переключение вкладок / клик по строке
     # ──────────────────────────────────
+    def _on_extra_video_fps_changed(self, fn, idx, val):
+        """Изменение FPS для доп. видео."""
+        r = self._find_row(fn)
+        if not r: return
+        evs = r.get("extra_videos", [])
+        if idx < len(evs):
+            evs[idx]["fps"] = val
+            self.schedule_autosave()
+
+    def _on_extra_video_affix_changed(self, fn, idx, field, val):
+        """Изменение prefix/suffix для доп. видео.
+        НЕ вызывает _update_extra_output_names — это пересоздаст виджеты
+        и убьёт поле ввода. Имя пересчитается при следующем rebuild."""
+        r = self._find_row(fn)
+        if not r: return
+        evs = r.get("extra_videos", [])
+        if idx < len(evs):
+            evs[idx][field] = val
+            self.schedule_autosave()
+
     def _on_tab_splitter_moved(self, pos, idx):
         """При изменении ширины txt-панели — применить ко ВСЕМ открытым вкладкам."""
         sender = self.sender()
@@ -7171,8 +8301,71 @@ class MKVMergeApp(QMainWindow):
                 w.setSizes(new_sizes)
         self.schedule_autosave()
 
+    def _sync_all_tabs_to_table(self):
+        """Синхронизировать данные из открытых вкладок фильмов в таблицу."""
+        for fn, tab_info in self._open_tabs.items():
+            r = self._find_row(fn)
+            if not r:
+                continue
+            tw = tab_info["widgets"]
+            # Название
+            te = tw.get("title_entry")
+            if te:
+                r["title_entry"].blockSignals(True)
+                r["title_entry"].setText(te.text())
+                r["title_entry"].blockSignals(False)
+            # Год
+            ye = tw.get("year_entry")
+            if ye:
+                r["year_entry"].blockSignals(True)
+                r["year_entry"].setText(ye.text())
+                r["year_entry"].blockSignals(False)
+            # Форум russdub
+            fe = tw.get("forum_entry")
+            if fe:
+                r["forum_entry"].blockSignals(True)
+                r["forum_entry"].setText(fe.text())
+                r["forum_entry"].blockSignals(False)
+                self._update_forum_open_btn(r)
+            # Пароль
+            pe = tw.get("password_entry")
+            if pe:
+                r["password_entry"].blockSignals(True)
+                r["password_entry"].setText(pe.text())
+                r["password_entry"].blockSignals(False)
+            # Торрент видео
+            tv = tw.get("torrent_entry")
+            if tv:
+                r["torrent_entry"].blockSignals(True)
+                r["torrent_entry"].setText(tv.text())
+                r["torrent_entry"].blockSignals(False)
+            # Постер URL
+            pu = tw.get("poster_url_entry")
+            if pu:
+                r["poster_url"] = pu.text().strip()
+            # Кинопоиск URL
+            kp = tw.get("kinopoisk_entry")
+            if kp:
+                r["kinopoisk_url"] = kp.text().strip()
+                self._update_kp_btn_icon(r)
+            # Абонемент
+            sy = tw.get("sub_year")
+            if sy:
+                r["sub_year"].blockSignals(True)
+                r["sub_year"].setCurrentText(sy.currentText())
+                r["sub_year"].blockSignals(False)
+            sm = tw.get("sub_month")
+            if sm:
+                r["sub_month"].blockSignals(True)
+                r["sub_month"].setCurrentText(sm.currentText())
+                r["sub_month"].blockSignals(False)
+        self._update_status_filter_counts()
+
     def _on_tab_changed(self, index):
         """При переключении вкладок — обновить батч-панель, скрыть/показать фильтры."""
+        if index == 0:
+            # Переключились на таблицу — синхронизировать данные из вкладок фильмов
+            self._sync_all_tabs_to_table()
         self._update_txt_panel_visibility()
         self._update_scan_button_for_tab()
         self._update_select_open_btn()
@@ -7195,11 +8388,13 @@ class MKVMergeApp(QMainWindow):
         self.fit_cols_btn.setVisible(on_table)
 
     def _on_cell_clicked(self, row, col):
-        """Клик по ячейке таблицы — загрузить txt и подсветить строку."""
+        """Клик по ячейке таблицы — подсветить строку, закрыть TXT если другая строка."""
         for r in self.rows:
             if r["row_index"] == row:
                 self._highlight_row(r)
-                self._handle_info(r["folder_name"])
+                # Закрыть TXT панель при выборе ДРУГОЙ строки
+                if self._active_txt_fn and self._active_txt_fn != r["folder_name"]:
+                    self._close_txt_panel()
                 return
 
     def _highlight_row(self, r):
@@ -7222,6 +8417,75 @@ class MKVMergeApp(QMainWindow):
                 return i
         return -1
 
+    def _install_anti_flash_hook(self):
+        """Установить Windows CBT-хук: убрать WS_VISIBLE у top-level окон при создании.
+        Возвращает функцию unhook() для снятия хука."""
+        if sys.platform != "win32":
+            return lambda: None
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+
+            class CREATESTRUCTW(ctypes.Structure):
+                _fields_ = [
+                    ("lpCreateParams", ctypes.c_void_p),
+                    ("hInstance", wintypes.HANDLE),
+                    ("hMenu", wintypes.HMENU),
+                    ("hwndParent", wintypes.HWND),
+                    ("cy", ctypes.c_int), ("cx", ctypes.c_int),
+                    ("y", ctypes.c_int), ("x", ctypes.c_int),
+                    ("style", wintypes.DWORD),
+                    ("lpszName", ctypes.c_wchar_p),
+                    ("lpszClass", ctypes.c_wchar_p),
+                    ("dwExStyle", wintypes.DWORD),
+                ]
+
+            class CBT_CREATEWNDW(ctypes.Structure):
+                _fields_ = [
+                    ("lpcs", ctypes.POINTER(CREATESTRUCTW)),
+                    ("hwndInsertAfter", wintypes.HWND),
+                ]
+
+            WH_CBT = 5
+            HCBT_CREATEWND = 3
+            WS_VISIBLE = 0x10000000
+            WS_CHILD = 0x40000000
+            HOOKPROC = ctypes.WINFUNCTYPE(
+                ctypes.c_long, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+            _main_hwnd = int(self.winId())
+
+            @HOOKPROC
+            def _cbt_proc(nCode, wParam, lParam):
+                if nCode == HCBT_CREATEWND:
+                    try:
+                        cbt = ctypes.cast(lParam, ctypes.POINTER(CBT_CREATEWNDW)).contents
+                        cs = cbt.lpcs.contents
+                        # Top-level окно (без parent, не child) с WS_VISIBLE — убрать видимость
+                        if not cs.hwndParent and (cs.style & WS_VISIBLE) and not (cs.style & WS_CHILD):
+                            cs.style &= ~WS_VISIBLE
+                    except Exception:
+                        pass
+                return user32.CallNextHookEx(None, nCode, wParam, lParam)
+
+            # Сохранить ссылку на callback чтобы GC не удалил
+            self._anti_flash_proc = _cbt_proc
+            tid = kernel32.GetCurrentThreadId()
+            hook = user32.SetWindowsHookExW(WH_CBT, _cbt_proc, None, tid)
+            if not hook:
+                return lambda: None
+
+            def _unhook():
+                try:
+                    user32.UnhookWindowsHookEx(hook)
+                except Exception:
+                    pass
+                self._anti_flash_proc = None
+            return _unhook
+        except Exception:
+            return lambda: None
+
     def _open_record_tab(self, fn):
         """Открыть вкладку редактирования записи. Если уже открыта — переключиться."""
         if fn in self._open_tabs:
@@ -7238,17 +8502,25 @@ class MKVMergeApp(QMainWindow):
             self.log(f"[TAB] Запись не найдена: {fn}")
             return
         try:
+            self.setUpdatesEnabled(False)
+            _unhook = self._install_anti_flash_hook()
             self._create_record_tab(fn, r)
         except Exception as e:
             self.log(f"[TAB] Ошибка открытия вкладки «{fn}»: {e}")
             import traceback; self.log(traceback.format_exc())
+        finally:
+            _unhook()
+            self.setUpdatesEnabled(True)
 
     def _create_record_tab(self, fn, r):
         """Создать содержимое вкладки записи."""
         # === Главный виджет вкладки: форма слева, txt справа ===
-        tab_root = QSplitter(Qt.Horizontal, self)
-        tab_root.hide()  # Скрыть до addTab чтобы не мелькал как отдельное окно
+        tab_root = QSplitter(Qt.Horizontal)
         tab_root.setProperty("folder_name", fn)
+        # Сразу добавить в tab_widget — tab_root перестаёт быть top-level окном,
+        # все дочерние виджеты будут внутри иерархии tab_widget (анти-мигание).
+        # setCurrentIndex вызывается в конце метода — пока вкладка невидима.
+        _tab_idx = self.tab_widget.addTab(tab_root, fn)
 
         # --- ЛЕВАЯ ЧАСТЬ: контейнер с кнопками сверху и scroll снизу ---
         left_container = QWidget()
@@ -7297,7 +8569,7 @@ class MKVMergeApp(QMainWindow):
 
         tab_widgets = {}
         connections = []
-        _btn_h = QLineEdit().sizeHint().height()  # высота кнопок = высота инпута
+        _btn_h = self._btn_h
 
         # --- Раннее определение наличия бэкапа (для кнопки вверху) ---
         _early_backup_exists = os.path.isfile(os.path.join(fp, "_meta_backup.json"))
@@ -8514,7 +9786,9 @@ class MKVMergeApp(QMainWindow):
                 QMessageBox.warning(self, "Ограничение",
                                     "Максимум 5 видео файлов\n(1 основной + 4 дополнительных)")
                 return
-            evs.append({"video": "", "video_full_path": "", "video_manual": False})
+            evs.append({"video": "", "video_full_path": "", "video_manual": False,
+                        "fps": "", "prefix": "", "suffix": "",
+                        "prefix_cb": False, "suffix_cb": False})
             rr["extra_videos"] = evs
             _rebuild_extra_videos()
             _update_audio_status()
@@ -8889,12 +10163,10 @@ class MKVMergeApp(QMainWindow):
         tab_open_output_dir.clicked.connect(lambda _, f=fn: self._open_output_dir_from_tab(f))
         tab_widgets["open_output_dir"] = tab_open_output_dir
 
-        # Основной выходной файл — вариант 1 (рамка)
-        _out_v1_frame = QFrame()
-        _out_v1_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
-        _out_v1_frame.setStyleSheet("QFrame { border: 1px solid #ccc; border-radius: 3px; }")
+        # Основной выходной файл — вариант 1
+        _out_v1_frame = QWidget()
         _out_v1_lay = QVBoxLayout(_out_v1_frame)
-        _out_v1_lay.setContentsMargins(4, 4, 4, 4)
+        _out_v1_lay.setContentsMargins(0, 0, 0, 0)
         _out_v1_lay.setSpacing(2)
         # Строка имени файла
         row2c_name = QHBoxLayout()
@@ -8914,7 +10186,68 @@ class MKVMergeApp(QMainWindow):
         row2c_name.addWidget(tab_output)
         row2c_name.addStretch()
         _out_v1_lay.addLayout(row2c_name)
-        # Строка кнопок (под именем)
+        # Строка FPS + аффикс + 📁 (внутри фрейма 1)
+        _v1_affix = QHBoxLayout()
+        _v1_affix.setSpacing(4)
+        _fps_lbl1 = QLabel("FPS:")
+        _fps_lbl1.setStyleSheet("font-weight:bold;")
+        _fps_lbl1.setToolTip("Частота кадров видео (--default-duration).\n"
+                             "«авто» — mkvmerge оставит оригинальную частоту.\n"
+                             "Изменение FPS замедляет/ускоряет воспроизведение.\n"
+                             "23.976 — стандарт для фильмов (NTSC film).")
+        _v1_affix.addWidget(_fps_lbl1)
+        _fps_combo = QComboBox()
+        _fps_combo.setEditable(True)
+        _fps_combo.addItems(["авто", "23.976", "24", "25", "29.97", "30", "50", "59.94", "60"])
+        _fps_combo.setFixedWidth(80)
+        _fps_combo.setToolTip("Частота кадров для видео дорожки.\n"
+                              "«авто» — оставить оригинальную.\n"
+                              "Можно ввести произвольное значение.\n"
+                              "Добавляет --default-duration 0:XXfps в mkvmerge.")
+        _fps_combo.setCurrentText(r.get("video_fps", "авто"))
+        def _on_fps_changed(val, _fn=fn):
+            rr = self._find_row(_fn)
+            if rr:
+                rr["video_fps"] = val
+                self.schedule_autosave()
+        _fps_combo.currentTextChanged.connect(_on_fps_changed)
+        tab_widgets["fps_combo"] = _fps_combo
+        _v1_affix.addWidget(_fps_combo)
+        _v1_affix.addSpacing(8)
+        _v1_affix_lbl = QLabel("Аффикс:")
+        _v1_affix_lbl.setStyleSheet("font-weight:bold;")
+        _v1_affix_lbl.setToolTip("Кастомный префикс и суффикс для имени выходного файла.\nФормат: {префикс}{имя_видео}{суффикс}.mkv")
+        _v1_affix.addWidget(_v1_affix_lbl)
+        _v1_affix.addWidget(QLabel("в начале:"))
+        tab_prefix_cb = QCheckBox()
+        tab_prefix_cb.setChecked(r["prefix_cb"].isChecked() if r.get("prefix_cb") else False)
+        tab_prefix_cb.setToolTip("Включить кастомный префикс (в начале имени файла)")
+        tab_widgets["prefix_cb"] = tab_prefix_cb
+        _v1_affix.addWidget(tab_prefix_cb)
+        tab_prefix = QLineEdit(r["prefix_entry"].text() if r.get("prefix_entry") else "")
+        tab_prefix.setToolTip("Кастомный префикс — добавляется В НАЧАЛО имени выходного файла")
+        tab_prefix.setEnabled(tab_prefix_cb.isChecked())
+        tab_prefix.setMaximumWidth(100)
+        tab_widgets["prefix_entry"] = tab_prefix
+        _v1_affix.addWidget(tab_prefix)
+        _v1_affix.addSpacing(8)
+        _v1_affix.addWidget(QLabel("в конце:"))
+        tab_suffix_cb = QCheckBox()
+        tab_suffix_cb.setChecked(r["suffix_cb"].isChecked() if r.get("suffix_cb") else False)
+        tab_suffix_cb.setToolTip("Включить кастомный суффикс (в конце имени файла)")
+        tab_widgets["suffix_cb"] = tab_suffix_cb
+        _v1_affix.addWidget(tab_suffix_cb)
+        tab_suffix = QLineEdit(r["suffix_entry"].text() if r.get("suffix_entry") else "")
+        tab_suffix.setToolTip("Кастомный суффикс — добавляется В КОНЕЦ имени выходного файла (например: _ATMOS)")
+        tab_suffix.setEnabled(tab_suffix_cb.isChecked())
+        tab_suffix.setMaximumWidth(100)
+        tab_widgets["suffix_entry"] = tab_suffix
+        _v1_affix.addWidget(tab_suffix)
+        _v1_affix.addSpacing(4)
+        _v1_affix.addWidget(tab_open_output_dir)
+        _v1_affix.addStretch()
+        _out_v1_lay.addLayout(_v1_affix)
+        # Строка кнопок (под аффиксом)
         row2c_btns = QHBoxLayout()
         _btn_to_res_1 = QPushButton("1 В Результат")
         _btn_to_res_1.setIcon(_make_to_result_icon())
@@ -8978,7 +10311,10 @@ class MKVMergeApp(QMainWindow):
                 if not v_name:
                     continue
                 has_any = True
-                out_name = f"{prefix}{os.path.splitext(v_name)[0]}{suffix}.mkv"
+                # Per-video prefix/suffix: если чекбокс включён — использовать своё, иначе наследовать
+                _ev_prefix = ev.get("prefix", "") if ev.get("prefix_cb") else prefix
+                _ev_suffix = ev.get("suffix", "") if ev.get("suffix_cb") else suffix
+                out_name = f"{_ev_prefix}{os.path.splitext(v_name)[0]}{_ev_suffix}.mkv"
                 num = i + 2
                 # Разделитель между вариантами
                 _sep = QFrame()
@@ -8987,12 +10323,10 @@ class MKVMergeApp(QMainWindow):
                 _sep.setStyleSheet("color: #bbb;")
                 _extra_out_layout.addWidget(_sep)
                 tab_widgets["_extra_out_labels"].append(_sep)
-                # Рамка варианта
-                _v_frame = QFrame()
-                _v_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
-                _v_frame.setStyleSheet("QFrame { border: 1px solid #ccc; border-radius: 3px; }")
+                # Контейнер варианта
+                _v_frame = QWidget()
                 _v_lay = QVBoxLayout(_v_frame)
-                _v_lay.setContentsMargins(4, 4, 4, 4)
+                _v_lay.setContentsMargins(0, 0, 0, 0)
                 _v_lay.setSpacing(2)
                 # Строка имени файла
                 _name_row = QHBoxLayout()
@@ -9007,6 +10341,82 @@ class MKVMergeApp(QMainWindow):
                 _name_row.addWidget(_name_lbl)
                 _name_row.addStretch()
                 _v_lay.addLayout(_name_row)
+                # Строка FPS + аффикс (как в frame 1)
+                _ev_idx = i  # захватить индекс
+                _affix_row = QHBoxLayout()
+                _affix_row.setSpacing(4)
+                _ev_fps_lbl = QLabel("FPS:")
+                _ev_fps_lbl.setStyleSheet("font-weight:bold;")
+                _ev_fps_lbl.setToolTip(f"FPS для видео #{num}.\nПусто = наследовать от основного ({rr.get('video_fps', 'авто')}).")
+                _affix_row.addWidget(_ev_fps_lbl)
+                _ev_fps = QComboBox()
+                _ev_fps.setEditable(True)
+                _ev_fps.addItems(["", "авто", "23.976", "24", "25", "29.97", "30", "50", "59.94", "60"])
+                _ev_fps.setFixedWidth(80)
+                _ev_fps.setCurrentText(ev.get("fps", ""))
+                _ev_fps.setToolTip(f"FPS для видео #{num}.\nПусто = наследовать от основного.\nМожно ввести произвольное значение.")
+                _ev_fps.lineEdit().setPlaceholderText(rr.get("video_fps", "авто"))
+                _ev_fps.currentTextChanged.connect(
+                    lambda val, _idx=_ev_idx, _fn=fn: self._on_extra_video_fps_changed(_fn, _idx, val))
+                _affix_row.addWidget(_ev_fps)
+                _affix_row.addSpacing(8)
+                _ev_affix_lbl = QLabel("Аффикс:")
+                _ev_affix_lbl.setStyleSheet("font-weight:bold;")
+                _ev_affix_lbl.setToolTip(f"Кастомный префикс и суффикс для выходного файла #{num}.\nПусто = наследовать от основного.")
+                _affix_row.addWidget(_ev_affix_lbl)
+                _pre_lbl = QLabel("в начале:")
+                _pre_lbl.setToolTip(f"Префикс для видео #{num}.\nВключите чекбокс и введите значение.\nОтключен = наследовать от основного.")
+                _affix_row.addWidget(_pre_lbl)
+                _ev_pre_cb = QCheckBox()
+                _ev_pre_cb.setChecked(ev.get("prefix_cb", False))
+                _ev_pre_cb.setToolTip(f"Включить кастомный префикс для видео #{num}")
+                _ev_pre_cb.stateChanged.connect(
+                    lambda st, _idx=_ev_idx, _fn=fn: self._on_extra_video_affix_changed(_fn, _idx, "prefix_cb", bool(st)))
+                _affix_row.addWidget(_ev_pre_cb)
+                _ev_pre = QLineEdit(ev.get("prefix", ""))
+                _ev_pre.setMaximumWidth(100)
+                _ev_pre.setPlaceholderText(prefix)
+                _ev_pre.setEnabled(_ev_pre_cb.isChecked())
+                _ev_pre.setToolTip(f"Префикс имени выходного файла #{num}.\nОтключен = наследовать от основного ({prefix}).")
+                _ev_pre.textChanged.connect(
+                    lambda val, _idx=_ev_idx, _fn=fn: self._on_extra_video_affix_changed(_fn, _idx, "prefix", val))
+                _ev_pre_cb.toggled.connect(_ev_pre.setEnabled)
+                _affix_row.addWidget(_ev_pre)
+                _affix_row.addSpacing(8)
+                _suf_lbl = QLabel("в конце:")
+                _suf_lbl.setToolTip(f"Суффикс для видео #{num}.\nВключите чекбокс и введите значение.\nОтключен = наследовать от основного.")
+                _affix_row.addWidget(_suf_lbl)
+                _ev_suf_cb = QCheckBox()
+                _ev_suf_cb.setChecked(ev.get("suffix_cb", False))
+                _ev_suf_cb.setToolTip(f"Включить кастомный суффикс для видео #{num}")
+                _ev_suf_cb.stateChanged.connect(
+                    lambda st, _idx=_ev_idx, _fn=fn: self._on_extra_video_affix_changed(_fn, _idx, "suffix_cb", bool(st)))
+                _affix_row.addWidget(_ev_suf_cb)
+                _ev_suf = QLineEdit(ev.get("suffix", ""))
+                _ev_suf.setMaximumWidth(100)
+                _ev_suf.setPlaceholderText(suffix)
+                _ev_suf.setEnabled(_ev_suf_cb.isChecked())
+                _ev_suf.setToolTip(f"Суффикс имени выходного файла #{num}.\nОтключен = наследовать от основного ({suffix}).")
+                _ev_suf.textChanged.connect(
+                    lambda val, _idx=_ev_idx, _fn=fn: self._on_extra_video_affix_changed(_fn, _idx, "suffix", val))
+                _ev_suf_cb.toggled.connect(_ev_suf.setEnabled)
+                _affix_row.addWidget(_ev_suf)
+                _affix_row.addSpacing(4)
+                # Кнопка 📁 — открыть папку с этим файлом
+                _ev_open_dir = QPushButton("📁")
+                _ev_open_dir.setFont(BTN_FONT); _ev_open_dir.setFixedWidth(28)
+                _ev_out_dir = ""
+                if out_name and _op2 and os.path.isfile(os.path.join(_op2, out_name)):
+                    _ev_out_dir = _op2
+                elif out_name and _tp2 and os.path.isfile(os.path.join(_tp2, out_name)):
+                    _ev_out_dir = _tp2
+                _ev_open_dir.setToolTip(f"Открыть папку с результатом:\n{_ev_out_dir}" if _ev_out_dir else "Открыть папку тест/результат")
+                tab_widgets[f"open_output_dir_{num}"] = _ev_open_dir
+                _ev_open_dir.clicked.connect(
+                    lambda _, _on=out_name, _o=_op2, _t=_tp2: self._open_output_dir_for_file(_on, _o, _t))
+                _affix_row.addWidget(_ev_open_dir)
+                _affix_row.addStretch()
+                _v_lay.addLayout(_affix_row)
                 # Строка кнопок (под именем)
                 _in_test = bool(_tp2 and os.path.isfile(os.path.join(_tp2, out_name)))
                 _in_res = bool(_op2 and os.path.isfile(os.path.join(_op2, out_name)))
@@ -9060,42 +10470,6 @@ class MKVMergeApp(QMainWindow):
         tab_widgets["update_extra_output_names"] = _update_extra_output_names
         output_layout.addWidget(_extra_out_container)
 
-        suffix_row = QHBoxLayout()
-        suffix_row.setSpacing(6)
-        _sfx_lbl = QLabel("Аффикс нового файла:")
-        _sfx_lbl.setToolTip("Кастомный префикс и суффикс для имени выходного файла.\nФормат: {префикс}{имя_видео}{суффикс}.mkv")
-        _sfx_lbl.setStyleSheet("font-weight:bold;")
-        suffix_row.addWidget(_sfx_lbl)
-        suffix_row.addSpacing(8)
-        suffix_row.addWidget(QLabel("в начале:"))
-        tab_prefix_cb = QCheckBox()
-        tab_prefix_cb.setChecked(r["prefix_cb"].isChecked() if r.get("prefix_cb") else False)
-        tab_prefix_cb.setToolTip("Включить кастомный префикс (в начале имени файла)")
-        tab_widgets["prefix_cb"] = tab_prefix_cb
-        suffix_row.addWidget(tab_prefix_cb)
-        tab_prefix = QLineEdit(r["prefix_entry"].text() if r.get("prefix_entry") else "")
-        tab_prefix.setToolTip("Кастомный префикс — добавляется В НАЧАЛО имени выходного файла")
-        tab_prefix.setEnabled(tab_prefix_cb.isChecked())
-        tab_prefix.setMaximumWidth(120)
-        tab_widgets["prefix_entry"] = tab_prefix
-        suffix_row.addWidget(tab_prefix)
-        suffix_row.addSpacing(16)
-        suffix_row.addWidget(QLabel("в конце:"))
-        tab_suffix_cb = QCheckBox()
-        tab_suffix_cb.setChecked(r["suffix_cb"].isChecked() if r.get("suffix_cb") else False)
-        tab_suffix_cb.setToolTip("Включить кастомный суффикс (в конце имени файла)")
-        tab_widgets["suffix_cb"] = tab_suffix_cb
-        suffix_row.addWidget(tab_suffix_cb)
-        tab_suffix = QLineEdit(r["suffix_entry"].text() if r.get("suffix_entry") else "")
-        tab_suffix.setToolTip("Кастомный суффикс — добавляется В КОНЕЦ имени выходного файла (например: _ATMOS)")
-        tab_suffix.setEnabled(tab_suffix_cb.isChecked())
-        tab_suffix.setMaximumWidth(120)
-        tab_widgets["suffix_entry"] = tab_suffix
-        suffix_row.addWidget(tab_suffix)
-        suffix_row.addSpacing(16)
-        suffix_row.addWidget(tab_open_output_dir)
-        suffix_row.addStretch()
-        output_layout.addLayout(suffix_row)
         russdub_outer.addWidget(russdub_left, 0)
         # --- Постер справа (сохраняет пропорции, прижат к верху блока russdub) ---
         poster_lbl = AspectRatioLabel()
@@ -9573,12 +10947,11 @@ class MKVMergeApp(QMainWindow):
         if backup_top_btn is not None and has_backup_conflict:
             backup_top_btn.clicked.connect(lambda _, rt=right_tabs, bi=_backup_tab_idx: rt.setCurrentIndex(bi))
 
-        # === Добавить вкладку ===
-        tab_idx = self.tab_widget.addTab(tab_root, fn)
-        self.tab_widget.setCurrentIndex(tab_idx)
+        # === Показать вкладку (addTab уже в начале метода) ===
+        self.tab_widget.setCurrentIndex(_tab_idx)
         # Подсветка ВСЕЙ вкладки красной рамкой при конфликте бэкапа
         if has_backup_conflict:
-            self.tab_widget.tabBar().setTabTextColor(tab_idx, QColor("#cc0000"))
+            self.tab_widget.tabBar().setTabTextColor(_tab_idx, QColor("#cc0000"))
             left_container.setObjectName("backup_warn_left")
             left_container.setStyleSheet("QWidget#backup_warn_left { border: 3px solid #cc0000; border-radius: 4px; }")
             right_tabs.setObjectName("backup_warn_right")
@@ -9744,6 +11117,7 @@ class MKVMergeApp(QMainWindow):
             rr = self._find_row(fn)
             if rr is not None:
                 rr["kinopoisk_url"] = text
+                self._update_kp_btn_icon(rr)
                 self.schedule_autosave()
         tab_kinopoisk.textChanged.connect(on_kinopoisk_url_change)
 
@@ -10781,6 +12155,15 @@ class MKVMergeApp(QMainWindow):
         forum_edit.setToolTip("Ссылка на тему про этот фильм на форуме russdub")
         setup_url_validation(forum_edit)
         forum_layout.addWidget(forum_edit, 1)
+        _forum_go_btn = QPushButton("→")
+        _fbh = forum_edit.sizeHint().height()
+        _forum_go_btn.setFixedSize(_fbh, _fbh)
+        _forum_go_btn.setToolTip("Открыть ссылку на форум russdub в браузере")
+        _forum_go_btn.clicked.connect(lambda: (
+            __import__('webbrowser').open(forum_edit.text().strip())
+            if forum_edit.text().strip().startswith("http") else None
+        ))
+        forum_layout.addWidget(_forum_go_btn)
         # Чекбокс "короткий линк"
         short_link_cb = QCheckBox("Короткий линк")
         short_link_cb.setChecked(True)
@@ -10807,6 +12190,11 @@ class MKVMergeApp(QMainWindow):
                 y = year_edit.text().strip()
                 q = f"{t} {y} завершен" if y else f"{t} завершен"
                 webbrowser.open(f"https://russdub.ru:22223/search.php?keywords={urllib.parse.quote(q)}")
+            else:
+                QMessageBox.warning(dlg, "Поиск на RussDub",
+                                    "Не удалось выполнить поиск.\n\n"
+                                    "Поле «Название» пустое в блоке «Данные о фильме».\n\n"
+                                    "Заполните название и нажмите поиск ещё раз.")
         forum_search_btn.clicked.connect(_search_russdub_dlg)
         forum_layout.addWidget(forum_search_btn)
         russdub_layout.addLayout(forum_layout)
@@ -10865,6 +12253,11 @@ class MKVMergeApp(QMainWindow):
             if t:
                 q = f"{t} ({y})" if y else t
                 webbrowser.open(f"https://www.kinopoisk.ru/index.php?kp_query={urllib.parse.quote(q)}")
+            else:
+                QMessageBox.warning(dlg, "Поиск на Кинопоиске",
+                                    "Не удалось выполнить поиск.\n\n"
+                                    "Поле «Название» пустое в блоке «Данные о фильме».\n\n"
+                                    "Заполните название и нажмите поиск ещё раз.")
         kp_search_btn.clicked.connect(_search_kp_dlg)
         kp_layout.addWidget(kp_search_btn)
         film_layout.addLayout(kp_layout)
@@ -10890,6 +12283,11 @@ class MKVMergeApp(QMainWindow):
             if t:
                 q = f"{t} ({y})" if y else t
                 webbrowser.open(f"https://rutracker.org/forum/tracker.php?nm={urllib.parse.quote(q)}&o=7&s=2")
+            else:
+                QMessageBox.warning(dlg, "Поиск на RuTracker",
+                                    "Не удалось выполнить поиск.\n\n"
+                                    "Поле «Название» пустое в блоке «Данные о фильме».\n\n"
+                                    "Заполните название и нажмите поиск ещё раз.")
         rt_search_btn.clicked.connect(_search_rt_dlg)
         tv_layout.addWidget(rt_search_btn)
         film_layout.addLayout(tv_layout)
@@ -11038,8 +12436,9 @@ class MKVMergeApp(QMainWindow):
         self._open_record_tab(name)
 
     def _handle_info(self, fn):
+        """Загрузить txt для записи. Возвращает True если файл загружен."""
         r = self._find_row(fn)
-        if not r: return
+        if not r: return False
         self._save_current_txt()
         if not r["txt_files"]:
             name = f"{r['folder_name']}.txt"
@@ -11052,13 +12451,15 @@ class MKVMergeApp(QMainWindow):
                     r["info_btn"].setStyleSheet("color:#006600; font-weight:bold;")
                     self.log(f"Создан: {name}")
                     self._check_row_status(r)
-                except Exception as e: QMessageBox.critical(self, "Ошибка", str(e)); return
+                except Exception as e: QMessageBox.critical(self, "Ошибка", str(e)); return False
             self._open_txt(path, name)
             self._sync_tab_txt(fn, name)
+            return True
         elif len(r["txt_files"]) == 1:
             sel = r["txt_files"][0]
             self._open_txt(os.path.join(r["folder_path"], sel), sel)
             self._sync_tab_txt(fn, sel)
+            return True
         else:
             # Несколько txt — показать меню выбора
             menu = QMenu(self)
@@ -11079,6 +12480,8 @@ class MKVMergeApp(QMainWindow):
                 self._open_txt(os.path.join(r["folder_path"], tf), tf)
                 self._sync_tab_txt(fn, tf)
                 self.schedule_autosave()
+                return True
+            return False
 
     def _open_txt(self, path, filename):
         try:
@@ -11113,6 +12516,47 @@ class MKVMergeApp(QMainWindow):
         # Сохранить txt со всех открытых вкладок фильмов
         for fn in list(self._open_tabs.keys()):
             self._save_tab_txt(fn)
+
+    # ──────────────────────────────────
+    #  TXT панель внизу (toggle)
+    # ──────────────────────────────────
+    def _toggle_txt_panel(self, fn):
+        """Переключить видимость TXT панели внизу."""
+        # Если панель открыта для этой же строки → закрыть
+        if self.txt_group.isVisible() and self._active_txt_fn == fn:
+            self._close_txt_panel()
+            return
+        # Иначе → загрузить и показать
+        if self._handle_info(fn):
+            self._show_txt_panel(fn)
+
+    def _show_txt_panel(self, fn):
+        """Показать TXT панель и обвести кнопку рамкой."""
+        self.txt_group.setVisible(True)
+        w = self.bottom_splitter.width()
+        self.bottom_splitter.setSizes([w // 2, w // 2])
+        # Обводка на кнопке
+        self._remove_txt_btn_border()
+        r = self._find_row(fn)
+        if r and r.get("info_btn"):
+            self._active_txt_btn = r["info_btn"]
+            self._active_txt_fn = fn
+            r["info_btn"].setStyleSheet(r["info_btn"].styleSheet() + " border: 2px solid #0078d4;")
+
+    def _close_txt_panel(self):
+        """Закрыть TXT панель и убрать рамку."""
+        self._save_current_txt()
+        self.txt_group.setVisible(False)
+        self._remove_txt_btn_border()
+        self._active_txt_fn = None
+        self.current_txt_path = None
+
+    def _remove_txt_btn_border(self):
+        """Убрать рамку с активной TXT кнопки."""
+        if self._active_txt_btn:
+            style = self._active_txt_btn.styleSheet().replace(" border: 2px solid #0078d4;", "")
+            self._active_txt_btn.setStyleSheet(style)
+            self._active_txt_btn = None
 
     # ──────────────────────────────────
     #  Обработка mkvmerge
@@ -11475,6 +12919,8 @@ class MKVMergeApp(QMainWindow):
                         return line.split(prefix, 1)[1].strip()
             return None
 
+        _last_output = []
+        _last_rc = -1
         try:
             for exe in paths:
                 try:
@@ -11521,6 +12967,8 @@ class MKVMergeApp(QMainWindow):
                         if rc2 == 0:
                             self._sig_unrar_done.emit(fn, True, "")
                             return
+                    _last_output = lines
+                    _last_rc = rc
                     self._sig_unrar_progress.emit(fn,
                         f"{os.path.basename(exe)}: код {rc}, пробуем следующий...")
                     continue
@@ -11528,9 +12976,10 @@ class MKVMergeApp(QMainWindow):
                     continue
                 except Exception as e:
                     continue
-            self._sig_unrar_done.emit(fn, False,
-                "Все инструменты завершились с ошибкой.\n"
-                "Проверьте: архив не повреждён, пароль верный.")
+            # Собрать вывод последней утилиты для диагностики
+            _detail = "\n".join(_last_output[-10:]) if _last_output else ""
+            _err_msg = f"Все инструменты завершились с ошибкой (код возврата: {_last_rc}).\n{_detail}"
+            self._sig_unrar_done.emit(fn, False, _err_msg)
         finally:
             for lnk in created_links:
                 try:
@@ -11573,6 +13022,7 @@ class MKVMergeApp(QMainWindow):
         if not r: return
         r["btn_unrar"].setEnabled(True)
         if success:
+            r["_password_error"] = False  # Сброс ошибки пароля при успешной распаковке
             self.log(f"[UNRAR] OK: {fn}")
             # Пересканировать папку — обновит audio/starter combo в таблице и на вкладке
             self._rescan_single_folder(fn)
@@ -11587,6 +13037,7 @@ class MKVMergeApp(QMainWindow):
                 r["status_lbl"].setText("Неверный пароль")
                 r["status_lbl"].setToolTip("Пароль от архива неверный — введите правильный пароль и попробуйте снова")
                 r["_password_error"] = True
+                r["sort_priority"] = 5
             else:
                 r["status_lbl"].setText("Ошибка распаковки")
                 r["status_lbl"].setToolTip(f"Ошибка: {error[:200]}")
@@ -11595,10 +13046,8 @@ class MKVMergeApp(QMainWindow):
             self._set_row_bg(r, COLOR_ERROR)
 
     def _on_password_changed(self, r):
-        """Сброс статуса ошибки пароля при изменении поля пароля."""
-        if r.get("_password_error"):
-            r["_password_error"] = False
-            self._check_row_status(r)
+        """Неверный пароль сбрасывается ТОЛЬКО при успешной распаковке."""
+        pass
 
     def _move_torrent_to_folder(self, fn):
         """Выбрать и переместить .torrent файл в папку аудио дорожки."""
@@ -11738,6 +13187,9 @@ class MKVMergeApp(QMainWindow):
         _title = r["title_entry"].text().strip()
         _year = r["year_entry"].text().strip()
         _suggested = f"{_title} {_year}".strip() if _title else ""
+        # Удалить запрещённые символы из предложения
+        for _fc in r'\/:*?"<>|':
+            _suggested = _suggested.replace(_fc, "")
 
         # Кнопка подстановки если имя папки отличается от "Название Год"
         if _suggested and _suggested != fn:
@@ -12035,6 +13487,15 @@ class MKVMergeApp(QMainWindow):
                 err = "Имя новой папки совпадает с текущей"
             elif rename_cb.isChecked() and cur_name == fn and new_name == fn:
                 err = "Ни одно имя не изменилось"
+            # Проверка запрещённых символов
+            if not err:
+                bad_new = [c for c in _invalid_chars if c in new_name]
+                if bad_new:
+                    err = f"Недопустимые символы в имени новой папки: {' '.join(bad_new)}"
+            if not err and rename_cb.isChecked():
+                bad_cur = [c for c in _invalid_chars if c in cur_name]
+                if bad_cur:
+                    err = f"Недопустимые символы в имени текущей папки: {' '.join(bad_cur)}"
             if err:
                 error_lbl.setText(err)
                 error_lbl.setVisible(True)
@@ -12348,7 +13809,7 @@ class MKVMergeApp(QMainWindow):
         for r in pool:
             if not r.get("archive_file"):
                 skipped_no_archive += 1; continue
-            if r["audio_files"]:
+            if self._has_main_audio(r):  # >= 1 ГБ, маленькие — стартовые
                 skipped_has_audio += 1; continue
             targets.append(r)
         if not targets:
@@ -12446,27 +13907,33 @@ class MKVMergeApp(QMainWindow):
                 continue  # дубликат — пропускаем
             audio_variants.append({"audio_path": af, "starter_path": ev_sp,
                                    "ender_path": ev_ep, "variant_idx": ev_idx + 2})
-        # Собрать видео
+        # Собрать видео (с per-video настройками)
         vn = r["video_combo"].currentText()
         vf = r.get("video_full_path") or (os.path.join(vp, vn) if vp and vn and vn != "— снять выбор —" else "")
         video_variants = []
         if vn and vn != "— снять выбор —" and vf and os.path.isfile(vf):
-            video_variants.append({"video_path": vf, "video_name": vn})
+            video_variants.append({"video_path": vf, "video_name": vn, "_ev": None})
         for ev in r.get("extra_videos", []):
             ev_v = ev.get("video", "")
             ev_vfp = ev.get("video_full_path", "")
             if not ev_vfp: ev_vfp = os.path.join(vp, ev_v) if vp and ev_v else ""
             if ev_vfp and os.path.isfile(ev_vfp):
-                video_variants.append({"video_path": ev_vfp, "video_name": ev_v or os.path.basename(ev_vfp)})
+                video_variants.append({"video_path": ev_vfp, "video_name": ev_v or os.path.basename(ev_vfp), "_ev": ev})
         if not audio_variants or not video_variants:
             return []
         # Формирование M task_refs — по одному на видео, все аудио внутри
-        prefix = self._get_prefix(r)
-        suffix = self._get_suffix(r)
+        _main_prefix = self._get_prefix(r)
+        _main_suffix = self._get_suffix(r)
+        _main_fps = r.get("video_fps", "авто")
         task_refs = []
         for vv in video_variants:
+            ev = vv.get("_ev")
+            # Per-video: если есть override в extra_video — использовать, иначе наследовать
+            _prefix = (ev.get("prefix", "") if ev and ev.get("prefix_cb") else _main_prefix) if ev else _main_prefix
+            _suffix = (ev.get("suffix", "") if ev and ev.get("suffix_cb") else _main_suffix) if ev else _main_suffix
+            _fps = (ev.get("fps") or _main_fps) if ev else _main_fps
             video_base = os.path.splitext(vv["video_name"])[0]
-            out_name = f"{prefix}{video_base}{suffix}.mkv"
+            out_name = f"{_prefix}{video_base}{_suffix}.mkv"
             out_path = os.path.join(tp, out_name)
             if op and os.path.isfile(os.path.join(op, out_name)): continue
             if os.path.isfile(out_path): continue
@@ -12478,6 +13945,7 @@ class MKVMergeApp(QMainWindow):
                 "delete_other_audio": delete_other_audio,
                 "auto_best_track": auto_best_track,
                 "audio_variants": audio_variants,
+                "video_fps": _fps,
             })
         return task_refs
 
@@ -12627,14 +14095,19 @@ class MKVMergeApp(QMainWindow):
                 if av.get("ender_path"):
                     _sz_parts.append(f"Конец v{av['variant_idx']}: {_format_file_size_gb(av['ender_path']) or 'н/д'}")
             self._sig_log.emit(f"  Размеры: {' | '.join(_sz_parts)}")
+            # FPS видео (--default-duration)
+            _fps_val = ref.get("video_fps", "авто")
+            _fps_flag = f'--default-duration 0:{_fps_val}fps ' if _fps_val and _fps_val != "авто" else ""
+            if _fps_flag:
+                self._sig_log.emit(f"  FPS: {_fps_val} (--default-duration 0:{_fps_val}fps)")
             # Лог полной команды
-            _mkvmerge_cmd = f'"{mkvmerge}" -o "{ref["output_path"]}" {audio_cmd} {no_audio_flag}"{ref["video_path"]}"'
+            _mkvmerge_cmd = f'"{mkvmerge}" -o "{ref["output_path"]}" {audio_cmd} {no_audio_flag}{_fps_flag}"{ref["video_path"]}"'
             self._sig_log.emit(f"  CMD: {_mkvmerge_cmd}")
             ps = f'''
 $ErrorActionPreference="Continue"
 try{{$k=Add-Type -MemberDefinition '[DllImport("kernel32.dll")]public static extern IntPtr GetStdHandle(int h);[DllImport("kernel32.dll")]public static extern bool GetConsoleMode(IntPtr h,out uint m);[DllImport("kernel32.dll")]public static extern bool SetConsoleMode(IntPtr h,uint m);' -Name K -Namespace QE -PassThru;$h=$k::GetStdHandle(-10);$m=0;$null=$k::GetConsoleMode($h,[ref]$m);$null=$k::SetConsoleMode($h,($m -band (-bnot 0x0040)) -bor 0x0080)}}catch{{}}
 Write-Host "=== Файл {cur}/{total}: {name} ({_n_tracks} дорожек) ===" -ForegroundColor Yellow
-& "{mkvmerge}" -o "{ref["output_path"]}" {audio_cmd} {no_audio_flag}"{ref["video_path"]}"
+& "{mkvmerge}" -o "{ref["output_path"]}" {audio_cmd} {no_audio_flag}{_fps_flag}"{ref["video_path"]}"
 if($LASTEXITCODE -eq 0){{Write-Host "OK" -ForegroundColor Green}}
 elseif($LASTEXITCODE -eq 1){{Write-Host "WARN" -ForegroundColor Yellow}}
 else{{Write-Host "ERROR $LASTEXITCODE" -ForegroundColor Red; Read-Host}}
@@ -12676,7 +14149,8 @@ else{{Write-Host "ERROR $LASTEXITCODE" -ForegroundColor Red; Read-Host}}
     #  Утилиты
     # ──────────────────────────────────
     def log(self, msg):
-        self.log_text.appendPlainText(msg)
+        ts = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        self.log_text.appendPlainText(f"[{ts}] {msg}")
 
     def _presort_audio_folders(self):
         """Предсортировка audio_folders по данным конфига до построения таблицы.
@@ -12805,6 +14279,11 @@ else{{Write-Host "ERROR $LASTEXITCODE" -ForegroundColor Red; Read-Host}}
         self.log("Статусы обновлены (фоновая проверка)")
 
     def _initial_load(self):
+        # Показать лейбл загрузки вместо таблицы (QStackedWidget, index 1)
+        self._table_stack.setCurrentIndex(1)
+        self._loading_label.setText("Загрузка...")
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
         try:
             self._scan_audio_silent()
             self._scan_video_silent()
@@ -12842,17 +14321,29 @@ else{{Write-Host "ERROR $LASTEXITCODE" -ForegroundColor Red; Read-Host}}
                     if current_visual != target_visual:
                         hdr.moveSection(current_visual, target_visual)
                 hdr.blockSignals(False)
-            # Восстановить открытые вкладки
-            for fn in self.config.get("open_tabs", []):
-                if self._find_row(fn):
-                    self._open_record_tab(fn)
-            # Вернуться на вкладку Таблица после восстановления
-            self.tab_widget.setCurrentIndex(0)
+            # Восстановить открытые вкладки (с блокировкой перерисовки + CBT-хук)
+            saved_tabs = self.config.get("open_tabs", [])
+            if saved_tabs:
+                self.setUpdatesEnabled(False)
+                _unhook = self._install_anti_flash_hook()
+                try:
+                    for tab_fn in saved_tabs:
+                        rr = self._find_row(tab_fn)
+                        if rr:
+                            try:
+                                self._create_record_tab(tab_fn, rr)
+                            except Exception:
+                                pass
+                finally:
+                    _unhook()
+                    self.setUpdatesEnabled(True)
         except Exception as e:
             self.log(f"Ошибка загрузки: {e}")
             import traceback; self.log(traceback.format_exc())
         finally:
             self._loading = False  # Разрешить autosave
+            # Показать таблицу вместо лейбла загрузки (QStackedWidget, index 0)
+            self._table_stack.setCurrentIndex(0)
             # Отложенная проверка статусов с I/O — ПОСЛЕ отрисовки окна
             QTimer.singleShot(100, self._deferred_status_check)
 
@@ -12888,10 +14379,22 @@ def main():
     _wheel_blocker = _ComboWheelBlocker(app)
     app.installEventFilter(_wheel_blocker)
 
+    # Подавить системные диалоги Windows при обращении к несуществующим дискам
+    # (B:/, F:/, G:/ и т.д.) — они мелькают как маленькие окна при запуске
+    try:
+        import ctypes
+        _SEM_FAILCRITICALERRORS = 0x0001
+        _SEM_NOOPENFILEERRORBOX = 0x8000
+        ctypes.windll.kernel32.SetErrorMode(_SEM_FAILCRITICALERRORS | _SEM_NOOPENFILEERRORBOX)
+    except Exception:
+        pass
+
     try:
         window = MKVMergeApp(readonly=_readonly)
-        window._initial_load()
+        # Показать окно с лейблом "Загрузка...", потом грузить данные
         window.show(); window.raise_(); window.activateWindow()
+        QApplication.processEvents()
+        window._initial_load()
         sys.exit(app.exec())
     except Exception as e:
         import traceback; err = traceback.format_exc(); print(f"\n[v2] ОШИБКА:\n{err}")
